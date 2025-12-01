@@ -2,41 +2,43 @@
 import { Platform } from "react-native";
 import Constants from "expo-constants";
 
-let cached = null;
-
 export default function getBackendUrl() {
-  if (cached) return cached;
-
-  // 1. Global override (debug)
+  //
+  // 1) Global override (optional for debugging)
+  //
   if (global && global.__BACKEND_URL__) {
-    cached = global.__BACKEND_URL__;
-    return cached;
+    console.log("[backend] using global override:", global.__BACKEND_URL__);
+    return global.__BACKEND_URL__;
   }
 
-  // 2. Expo extra config (production)
+  //
+  // 2) Expo extra env (used for production)
+  //
   try {
-    const extra =
-      Constants?.expoConfig?.extra ||
-      Constants?.manifest?.extra;
-
+    const extra = Constants?.expoConfig?.extra || Constants?.manifest?.extra;
     if (extra?.BACKEND_URL) {
-      cached = extra.BACKEND_URL;
-      return cached;
+      console.log("[backend] using production BACKEND_URL:", extra.BACKEND_URL);
+      return extra.BACKEND_URL;
     }
-  } catch (e) {}
+  } catch (e) {
+    console.log("[backend] expo extra failed:", e);
+  }
 
-  // 3. Local development fallbacks
+  //
+  // 3) Local development defaults
+  //
   if (Platform.OS === "android") {
-    cached = "http://10.0.2.2:3001";
-    return cached;
+    // Android Emulator → host machine
+    return "http://10.0.2.2:3001";
   }
 
   if (Platform.OS === "ios") {
-    cached = "http://localhost:3001";
-    return cached;
+    // iOS simulator
+    return "http://localhost:3001";
   }
 
-  // default fallback
-  cached = "http://10.0.2.2:3001";
-  return cached;
+  //
+  // 4) Fallback (safe default)
+  //
+  return "http://localhost:3001";
 }
