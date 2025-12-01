@@ -1,16 +1,42 @@
-import Constants from 'expo-constants';
-import { Platform } from 'react-native';
+// services/backend.js
+import { Platform } from "react-native";
+import Constants from "expo-constants";
+
+let cached = null;
 
 export default function getBackendUrl() {
-  const extra = Constants?.expoConfig?.extra;
+  if (cached) return cached;
 
-  if (extra?.BACKEND_URL) {
-    return extra.BACKEND_URL;
+  // 1. Global override (debug)
+  if (global && global.__BACKEND_URL__) {
+    cached = global.__BACKEND_URL__;
+    return cached;
   }
 
-  // fallback for local dev
-  if (Platform.OS === "android") return "http://10.0.2.2:3001";
-  if (Platform.OS === "ios") return "http://localhost:3001";
+  // 2. Expo extra config (production)
+  try {
+    const extra =
+      Constants?.expoConfig?.extra ||
+      Constants?.manifest?.extra;
 
-  return "http://10.0.2.2:3001";
+    if (extra?.BACKEND_URL) {
+      cached = extra.BACKEND_URL;
+      return cached;
+    }
+  } catch (e) {}
+
+  // 3. Local development fallbacks
+  if (Platform.OS === "android") {
+    cached = "http://10.0.2.2:3001";
+    return cached;
+  }
+
+  if (Platform.OS === "ios") {
+    cached = "http://localhost:3001";
+    return cached;
+  }
+
+  // default fallback
+  cached = "http://10.0.2.2:3001";
+  return cached;
 }
