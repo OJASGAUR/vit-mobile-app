@@ -1,0 +1,13 @@
+{
+  "expo": {
+    "name": "Vit Mobile",
+    "slug": "vit-mobile-app",
+    "version": "1.0.0",
+    "sdkVersion": "48.0.0",
+    "extra": {
+      "eas": {
+        "projectId": "18ed3980-63de-4f2d-a83b-08fbc3b0e2ad"
+      }
+    }
+  }
+}
