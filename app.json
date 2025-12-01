@@ -11,7 +11,12 @@
       }
     },
     "android": {
-      "package": "com.ojasgaur.vitmobileapp"
-    }
+      "package": "com.ojasgaur.vitmobileapp",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#000000"
+      }
+    },
+    "icon": "./assets/icon.png"
   }
 }
