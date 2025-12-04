@@ -1,49 +1,133 @@
 // App.js
-import React, { useEffect } from 'react';
-import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { StatusBar } from 'react-native';
-import HomeScreen from './screens/HomeScreen';
-import TimetableScreen from './screens/TimetableScreen';
-import SavedScreen from './screens/SavedScreen';
-import { useStore } from './stores/useStore';
-import { ThemeProvider } from './theme/theme';
-import { loadDefaultTimetable, getDefaultTimetableId } from './services/storage';
+import React, { useEffect } from "react";
+import { View, ActivityIndicator, StyleSheet } from "react-native";
+import { NavigationContainer } from "@react-navigation/native";
+import { createDrawerNavigator } from "@react-navigation/drawer";
+import { createStackNavigator } from "@react-navigation/stack";
 
-const Stack = createNativeStackNavigator();
+import TimetableScreen from "./screens/TimetableScreen";
+import UploadScreen from "./screens/UploadScreen";
+import SubscriptionScreen from "./screens/SubscriptionScreen";
 
-export default function App() {
-  const dark = useStore(s => s.darkMode);
-  const setTimetable = useStore(s => s.setTimetable);
-  const setDefaultId = useStore(s => s.setDefaultTimetableId);
+import { useStore } from "./stores/useStore";
+import { loadAppState } from "./services/localStorage";
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const id = await getDefaultTimetableId();
-        setDefaultId(id);
-        if (!id) return;
-        const t = await loadDefaultTimetable();
-        if (t) setTimetable(t);
-      } catch (e) {
-        console.warn('Auto-load default timetable failed', e.message);
-      }
-    })();
-  }, []);
+const Drawer = createDrawerNavigator();
+const Stack = createStackNavigator();
 
+function MainDrawer() {
   return (
-    <ThemeProvider>
-      <SafeAreaProvider>
-        <NavigationContainer theme={dark ? DarkTheme : DefaultTheme}>
-          <StatusBar barStyle={dark ? 'light-content' : 'dark-content'} />
-          <Stack.Navigator initialRouteName="Home" screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="Home" component={HomeScreen} />
-            <Stack.Screen name="Timetable" component={TimetableScreen} />
-            <Stack.Screen name="Saved" component={SavedScreen} />
-          </Stack.Navigator>
-        </NavigationContainer>
-      </SafeAreaProvider>
-    </ThemeProvider>
+    <Drawer.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: "#061124" },
+        headerTintColor: "#fff",
+        drawerStyle: { backgroundColor: "#020814" },
+        drawerActiveTintColor: "#fff",
+        drawerInactiveTintColor: "#9bb2cf",
+      }}
+    >
+      <Drawer.Screen
+        name="Timetable"
+        component={TimetableScreen}
+        options={{ title: "Timetable" }}
+      />
+      <Drawer.Screen
+        name="Upload"
+        component={UploadScreen}
+        options={{ title: "Upload timetable" }}
+      />
+      <Drawer.Screen
+        name="Subscription"
+        component={SubscriptionScreen}
+        options={{ title: "Subscription" }}
+      />
+    </Drawer.Navigator>
   );
 }
+
+export default function App() {
+  const timetable = useStore((s) => s.timetable);
+  const setTimetable = useStore((s) => s.setTimetable);
+  const uploadsRemaining = useStore((s) => s.uploadsRemaining);
+  const setUploadsRemaining = useStore((s) => s.setUploadsRemaining);
+  const setSubscriptionCode = useStore((s) => s.setSubscriptionCode);
+  const hydrated = useStore((s) => s.hydrated);
+  const setHydrated = useStore((s) => s.setHydrated);
+
+  // Hydrate from AsyncStorage
+  useEffect(() => {
+    const hydrate = async () => {
+      try {
+        const saved = await loadAppState();
+        if (saved) {
+          if (saved.timetable) setTimetable(saved.timetable);
+          if (typeof saved.uploadsRemaining === "number") {
+            setUploadsRemaining(saved.uploadsRemaining);
+          }
+          if (saved.subscriptionCode) {
+            setSubscriptionCode(saved.subscriptionCode);
+          }
+        }
+      } catch (e) {
+        console.warn("hydrate failed", e);
+      } finally {
+        setHydrated(true);
+      }
+    };
+    hydrate();
+  }, []);
+
+  if (!hydrated) {
+    return (
+      <View style={styles.splash}>
+        <ActivityIndicator size="large" color="#fff" />
+      </View>
+    );
+  }
+
+  const hasTimetable = !!timetable;
+
+  return (
+    <NavigationContainer>
+      {hasTimetable ? (
+        // User already has timetable → open drawer directly
+        <MainDrawer />
+      ) : (
+        // First launch (no timetable) → show upload flow first
+        <Stack.Navigator
+          screenOptions={{
+            headerStyle: { backgroundColor: "#061124" },
+            headerTintColor: "#fff",
+            headerTitleAlign: "center",
+          }}
+        >
+          <Stack.Screen
+            name="Upload"
+            component={UploadScreen}
+            options={{ title: "Upload timetable" }}
+          />
+          <Stack.Screen
+            name="Subscription"
+            component={SubscriptionScreen}
+            options={{ title: "Subscription" }}
+          />
+          <Stack.Screen
+            name="MainDrawer"
+            component={MainDrawer}
+            options={{ headerShown: false }}
+          />
+        </Stack.Navigator>
+      )}
+    </NavigationContainer>
+  );
+}
+
+const styles = StyleSheet.create({
+  splash: {
+    flex: 1,
+    backgroundColor: "#061124",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});
+cd
