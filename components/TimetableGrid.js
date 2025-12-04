@@ -27,42 +27,84 @@ export default function TimetableGrid({ timetable = {}, weekView = false, single
 
   function isLabEvent(ev) {
     if (!ev) return false;
-    if (ev.slot && typeof ev.slot === 'string' && ev.slot.trim().toUpperCase().startsWith('L')) return true;
-    if (ev.courseName && typeof ev.courseName === 'string' && /lab/i.test(ev.courseName)) return true;
+    if (ev.slot && typeof ev.slot === "string" && ev.slot.trim().toUpperCase().startsWith("L")) return true;
+    if (ev.courseName && typeof ev.courseName === "string" && /lab/i.test(ev.courseName)) return true;
+    return false;
+  }
+
+  // Extract the numeric part of a lab slot (L37 -> 37). Only use the FIRST part if "L37+L38".
+  function getLabSlotNumber(ev) {
+    if (!ev || !ev.slot || typeof ev.slot !== "string") return null;
+    const firstPart = ev.slot.split("+")[0].trim().toUpperCase(); // e.g. "L37" from "L37+L38"
+    const match = /^L(\d+)$/.exec(firstPart);
+    if (!match) return null;
+    const n = parseInt(match[1], 10);
+    return Number.isNaN(n) ? null : n;
+  }
+
+  // Decide if two events should be merged as a lab pair like L37+L38, L39+L40, etc.
+  function canMergeLabPair(cur, nxt) {
+    if (!cur || !nxt) return false;
+
+    // Both must be labs
+    if (!(isLabEvent(cur) && isLabEvent(nxt))) return false;
+
+    // Same course (subject)
+    if (!cur.courseCode || !nxt.courseCode || cur.courseCode !== nxt.courseCode) return false;
+
+    // Optional: same venue if both exist
+    if (cur.venue && nxt.venue && cur.venue !== nxt.venue) return false;
+
+    // Check slot pair: L(odd) + L(odd+1)
+    const n1 = getLabSlotNumber(cur);
+    const n2 = getLabSlotNumber(nxt);
+    if (n1 == null || n2 == null) return false;
+
+    // e.g. 37 & 38, 39 & 40, 41 & 42 ... (odd followed by next even)
+    if (n1 % 2 === 1 && n2 === n1 + 1) {
+      return true;
+    }
+
     return false;
   }
 
   function mergeConsecutiveLabs(events = []) {
     if (!Array.isArray(events) || events.length === 0) return [];
-    // make a shallow copy and sort by start time
+
+    // shallow copy and sort by start time for consistent order
     const arr = events.slice().sort((a, b) => (timeToMinutes(a.start) || 0) - (timeToMinutes(b.start) || 0));
     const res = [];
-    let cur = Object.assign({}, arr[0]);
+    let cur = { ...arr[0] };
 
     for (let i = 1; i < arr.length; i++) {
       const nxt = arr[i];
-      const curEnd = timeToMinutes(cur.end);
-      const nxtStart = timeToMinutes(nxt.start);
 
-      const sameCourse = cur.courseCode && nxt.courseCode && cur.courseCode === nxt.courseCode;
-      const bothLab = isLabEvent(cur) && isLabEvent(nxt);
-      const contiguous = curEnd !== null && nxtStart !== null && curEnd === nxtStart;
-
-      if (sameCourse && bothLab && contiguous) {
-        // merge nxt into cur
+      if (canMergeLabPair(cur, nxt)) {
+        // Merge nxt into cur as a lab block
         cur.end = nxt.end || cur.end;
-        // merge slots like L39+L40
-        if (cur.slot && nxt.slot) cur.slot = `${cur.slot}+${nxt.slot}`;
-        else if (!cur.slot && nxt.slot) cur.slot = nxt.slot;
-        // if venues differ, concatenate
-        if (cur.venue && nxt.venue && cur.venue !== nxt.venue) cur.venue = `${cur.venue}+${nxt.venue}`;
-        else if (!cur.venue && nxt.venue) cur.venue = nxt.venue;
-        // continue without pushing
+
+        if (cur.slot && nxt.slot) {
+          // Avoid double "++" if already merged; but normally these are single slots
+          cur.slot = `${cur.slot}+${nxt.slot}`;
+        } else if (!cur.slot && nxt.slot) {
+          cur.slot = nxt.slot;
+        }
+
+        // If venues somehow differ and we allowed merge, concatenate
+        if (cur.venue && nxt.venue && cur.venue !== nxt.venue) {
+          cur.venue = `${cur.venue}+${nxt.venue}`;
+        } else if (!cur.venue && nxt.venue) {
+          cur.venue = nxt.venue;
+        }
+
+        // Do NOT push yet; we keep extending cur
       } else {
+        // push finished block and start a new one
         res.push(cur);
-        cur = Object.assign({}, nxt);
+        cur = { ...nxt };
       }
     }
+
     res.push(cur);
     return res;
   }
@@ -73,7 +115,9 @@ export default function TimetableGrid({ timetable = {}, weekView = false, single
     const merged = mergeConsecutiveLabs(events);
     return (
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 24 }}>
-        {merged.length === 0 ? <Text style={styles.emptyLarge}>No classes</Text> : merged.map((ev, i) => <EventCard key={`${ev.courseCode}-${i}`} event={ev} />)}
+        {merged.length === 0
+          ? <Text style={styles.emptyLarge}>No classes</Text>
+          : merged.map((ev, i) => <EventCard key={`${ev.courseCode}-${i}`} event={ev} />)}
       </ScrollView>
     );
   }
@@ -83,9 +127,11 @@ export default function TimetableGrid({ timetable = {}, weekView = false, single
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ padding: 12 }}>
         {DAYS.map((d) => (
           <View key={d} style={styles.col}>
-            <Text style={styles.colTitle}>{d.slice(0,3)}</Text>
+            <Text style={styles.colTitle}>{d.slice(0, 3)}</Text>
             <ScrollView style={styles.colBody} contentContainerStyle={{ paddingBottom: 24 }}>
-              {((timetable[d] || []).length === 0) ? <Text style={styles.empty}>—</Text> : mergeConsecutiveLabs(timetable[d]).map((ev, i) => <EventCard key={`${d}-${i}`} event={ev} />)}
+              {((timetable[d] || []).length === 0)
+                ? <Text style={styles.empty}>—</Text>
+                : mergeConsecutiveLabs(timetable[d]).map((ev, i) => <EventCard key={`${d}-${i}`} event={ev} />)}
             </ScrollView>
           </View>
         ))}
@@ -98,7 +144,7 @@ export default function TimetableGrid({ timetable = {}, weekView = false, single
     <View style={styles.gridWrap}>
       {DAYS.map(d => (
         <View key={d} style={styles.gridCol}>
-          <Text style={styles.dayTitle}>{d.slice(0,3)}</Text>
+          <Text style={styles.dayTitle}>{d.slice(0, 3)}</Text>
           <View style={styles.dayBody}>
             {mergeConsecutiveLabs(timetable[d] || []).slice(0, 4).map((ev, i) => <EventCard key={`${d}-${i}`} event={ev} />)}
             {(timetable[d] || []).length === 0 && <Text style={styles.empty}>—</Text>}
