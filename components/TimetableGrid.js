@@ -18,12 +18,62 @@ function EventCard({ event }) {
 }
 
 export default function TimetableGrid({ timetable = {}, weekView = false, singleDay = false, day }) {
+  function timeToMinutes(t) {
+    if (!t) return null;
+    const m = t.split(":");
+    if (m.length < 2) return null;
+    return parseInt(m[0], 10) * 60 + parseInt(m[1], 10);
+  }
+
+  function isLabEvent(ev) {
+    if (!ev) return false;
+    if (ev.slot && typeof ev.slot === 'string' && ev.slot.trim().toUpperCase().startsWith('L')) return true;
+    if (ev.courseName && typeof ev.courseName === 'string' && /lab/i.test(ev.courseName)) return true;
+    return false;
+  }
+
+  function mergeConsecutiveLabs(events = []) {
+    if (!Array.isArray(events) || events.length === 0) return [];
+    // make a shallow copy and sort by start time
+    const arr = events.slice().sort((a, b) => (timeToMinutes(a.start) || 0) - (timeToMinutes(b.start) || 0));
+    const res = [];
+    let cur = Object.assign({}, arr[0]);
+
+    for (let i = 1; i < arr.length; i++) {
+      const nxt = arr[i];
+      const curEnd = timeToMinutes(cur.end);
+      const nxtStart = timeToMinutes(nxt.start);
+
+      const sameCourse = cur.courseCode && nxt.courseCode && cur.courseCode === nxt.courseCode;
+      const bothLab = isLabEvent(cur) && isLabEvent(nxt);
+      const contiguous = curEnd !== null && nxtStart !== null && curEnd === nxtStart;
+
+      if (sameCourse && bothLab && contiguous) {
+        // merge nxt into cur
+        cur.end = nxt.end || cur.end;
+        // merge slots like L39+L40
+        if (cur.slot && nxt.slot) cur.slot = `${cur.slot}+${nxt.slot}`;
+        else if (!cur.slot && nxt.slot) cur.slot = nxt.slot;
+        // if venues differ, concatenate
+        if (cur.venue && nxt.venue && cur.venue !== nxt.venue) cur.venue = `${cur.venue}+${nxt.venue}`;
+        else if (!cur.venue && nxt.venue) cur.venue = nxt.venue;
+        // continue without pushing
+      } else {
+        res.push(cur);
+        cur = Object.assign({}, nxt);
+      }
+    }
+    res.push(cur);
+    return res;
+  }
+
   if (singleDay) {
     const dayName = day || "Monday";
     const events = timetable[dayName] || [];
+    const merged = mergeConsecutiveLabs(events);
     return (
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 24 }}>
-        {events.length === 0 ? <Text style={styles.emptyLarge}>No classes</Text> : events.map((ev, i) => <EventCard key={`${ev.courseCode}-${i}`} event={ev} />)}
+        {merged.length === 0 ? <Text style={styles.emptyLarge}>No classes</Text> : merged.map((ev, i) => <EventCard key={`${ev.courseCode}-${i}`} event={ev} />)}
       </ScrollView>
     );
   }
@@ -35,7 +85,7 @@ export default function TimetableGrid({ timetable = {}, weekView = false, single
           <View key={d} style={styles.col}>
             <Text style={styles.colTitle}>{d.slice(0,3)}</Text>
             <ScrollView style={styles.colBody} contentContainerStyle={{ paddingBottom: 24 }}>
-              {(timetable[d] || []).length === 0 ? <Text style={styles.empty}>—</Text> : (timetable[d] || []).map((ev, i) => <EventCard key={`${d}-${i}`} event={ev} />)}
+              {((timetable[d] || []).length === 0) ? <Text style={styles.empty}>—</Text> : mergeConsecutiveLabs(timetable[d]).map((ev, i) => <EventCard key={`${d}-${i}`} event={ev} />)}
             </ScrollView>
           </View>
         ))}
@@ -50,7 +100,7 @@ export default function TimetableGrid({ timetable = {}, weekView = false, single
         <View key={d} style={styles.gridCol}>
           <Text style={styles.dayTitle}>{d.slice(0,3)}</Text>
           <View style={styles.dayBody}>
-            {(timetable[d] || []).slice(0, 4).map((ev, i) => <EventCard key={`${d}-${i}`} event={ev} />)}
+            {mergeConsecutiveLabs(timetable[d] || []).slice(0, 4).map((ev, i) => <EventCard key={`${d}-${i}`} event={ev} />)}
             {(timetable[d] || []).length === 0 && <Text style={styles.empty}>—</Text>}
           </View>
         </View>
