@@ -1,4 +1,4 @@
-// vit-mobile-app/screens/TimetableScreen.js
+// screens/TimetableScreen.js
 import React from "react";
 import {
   View,
@@ -10,31 +10,25 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useStore } from "../stores/useStore";
 import TimetableGrid from "../components/TimetableGrid";
+import { useThemeColors } from "../theme/theme";
 
-const DAYS = [
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-  "Sunday",
-];
+const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
-export default function TimetableScreen({ navigation }) {
+export default function TimetableScreen() {
   const timetable = useStore((s) => s.timetable);
   const currentDay = useStore((s) => s.currentDay);
   const setCurrentDay = useStore((s) => s.setCurrentDay);
   const weekView = useStore((s) => s.weekView);
   const toggleWeekView = useStore((s) => s.toggleWeekView);
 
+  const colors = useThemeColors();
+
   if (!timetable) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
         <View style={styles.emptyWrap}>
-          <Text style={styles.emptyText}>
-            No timetable loaded yet. Open the menu ☰ and choose "Upload
-            timetable".
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+            No timetable loaded. Upload from the menu.
           </Text>
         </View>
       </SafeAreaView>
@@ -42,22 +36,10 @@ export default function TimetableScreen({ navigation }) {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
-      <View style={styles.container}>
-        {/* HEADER */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.openDrawer()}>
-            <Text style={styles.link}>☰</Text>
-          </TouchableOpacity>
-
-          <Text style={styles.title}>Schedule</Text>
-
-          {/* Empty placeholder so title stays centered */}
-          <View style={{ width: 40 }} />
-        </View>
-
-        {/* DAY SELECTOR */}
-        <View style={styles.tabsWrapper}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={["left", "right"]}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        {/* Day selector */}
+        <View style={[styles.tabsWrapper, { borderBottomColor: colors.border }]}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -67,23 +49,31 @@ export default function TimetableScreen({ navigation }) {
               <TouchableOpacity
                 key={d}
                 onPress={() => setCurrentDay(d)}
-                style={[styles.tab, currentDay === d && styles.tabActive]}
+                style={[
+                  styles.tab,
+                  currentDay === d && { borderBottomWidth: 2, borderBottomColor: colors.accent },
+                ]}
               >
                 <Text
                   style={[
                     styles.tabText,
-                    currentDay === d && styles.tabTextActive,
+                    {
+                      color:
+                        currentDay === d ? colors.textPrimary : colors.textSecondary,
+                    },
                   ]}
                 >
                   {d.slice(0, 3)}
                 </Text>
-                {currentDay === d && <View style={styles.activeDot} />}
               </TouchableOpacity>
             ))}
 
             <TouchableOpacity
               onPress={toggleWeekView}
-              style={styles.viewToggle}
+              style={[
+                styles.viewToggle,
+                { backgroundColor: colors.accent },
+              ]}
             >
               <Text style={styles.viewToggleText}>
                 {weekView ? "Week" : "Day"}
@@ -92,16 +82,12 @@ export default function TimetableScreen({ navigation }) {
           </ScrollView>
         </View>
 
-        {/* BODY */}
+        {/* Body */}
         <View style={styles.body}>
           {weekView ? (
             <TimetableGrid timetable={timetable} weekView />
           ) : (
-            <TimetableGrid
-              timetable={timetable}
-              singleDay
-              day={currentDay}
-            />
+            <TimetableGrid timetable={timetable} singleDay day={currentDay} />
           )}
         </View>
       </View>
@@ -112,33 +98,13 @@ export default function TimetableScreen({ navigation }) {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: "#061124",
   },
   container: {
     flex: 1,
-    backgroundColor: "#061124",
-  },
-  header: {
-    height: 60,
-    paddingHorizontal: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "900",
-    color: "#fff",
-  },
-  link: {
-    color: "#66b0ff",
-    fontWeight: "700",
-    fontSize: 18,
   },
   tabsWrapper: {
     paddingVertical: 6,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.05)",
   },
   tabsContainer: {
     paddingHorizontal: 12,
@@ -150,24 +116,11 @@ const styles = StyleSheet.create({
     marginRight: 12,
     alignItems: "center",
   },
-  tabActive: {},
   tabText: {
-    color: "#bcd7ef",
     fontWeight: "700",
     fontSize: 15,
   },
-  tabTextActive: {
-    color: "#fff",
-  },
-  activeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 6,
-    backgroundColor: "rgba(0,122,255,0.95)",
-    marginTop: 4,
-  },
   viewToggle: {
-    backgroundColor: "rgba(0,122,255,0.95)",
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 10,
@@ -186,11 +139,8 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 24,
   },
   emptyText: {
-    color: "#bcd7ef",
     fontSize: 16,
-    textAlign: "center",
   },
 });

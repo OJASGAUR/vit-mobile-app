@@ -15,6 +15,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useStore } from "../stores/useStore";
 import { uploadImageAsync } from "../services/api";
 import { saveAppState } from "../services/localStorage";
+import { useThemeColors } from "../theme/theme";
 
 export default function UploadScreen({ navigation }) {
   const [image, setImage] = useState(null);
@@ -26,10 +27,12 @@ export default function UploadScreen({ navigation }) {
   const setTimetable = useStore((s) => s.setTimetable);
   const setUploadsRemaining = useStore((s) => s.setUploadsRemaining);
 
+  const colors = useThemeColors();
+
   const goToSubscription = () => navigation.navigate("Subscription");
 
   const guardUploadLimit = () => {
-    if (uploadsRemaining <= 0 || uploadsRemaining === 0) {
+    if (uploadsRemaining <= 0) {
       Alert.alert(
         "Upload limit reached",
         "You have used your free upload. Enter a subscription code to unlock more uploads.",
@@ -80,8 +83,7 @@ export default function UploadScreen({ navigation }) {
         throw new Error("Backend did not return a timetable.");
       }
 
-      const newRemaining =
-        uploadsRemaining === Infinity ? Infinity : uploadsRemaining - 1;
+      const newRemaining = uploadsRemaining - 1;
 
       setTimetable(result.timetable);
       setUploadsRemaining(newRemaining);
@@ -95,7 +97,7 @@ export default function UploadScreen({ navigation }) {
       Alert.alert("Timetable ready", "Your timetable has been generated!", [
         {
           text: "Open timetable",
-          onPress: () => navigation.navigate("Timetable"),
+          onPress: () => navigation.navigate("MainDrawer",{screen: "Timetable"}),
         },
       ]);
     } catch (e) {
@@ -107,22 +109,38 @@ export default function UploadScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView
+      style={[styles.safe, { backgroundColor: colors.background }]}
+      edges={["left", "right"]}
+    >
       <View style={styles.container}>
-        <Text style={styles.title}>Upload timetable</Text>
-        <Text style={styles.subtitle}>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>
+          Upload timetable
+        </Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
           Upload your VIT timetable screenshot once per semester. After that,
           the app works completely offline.
         </Text>
 
-        <TouchableOpacity style={styles.pickButton} onPress={handlePickImage}>
-          <Text style={styles.pickButtonText}>
+        <TouchableOpacity
+          style={[
+            styles.pickButton,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+          onPress={handlePickImage}
+        >
+          <Text style={[styles.pickButtonText, { color: colors.textPrimary }]}>
             {image ? "Pick another image" : "Pick timetable image"}
           </Text>
         </TouchableOpacity>
 
         {image && (
-          <View style={styles.previewBox}>
+          <View
+            style={[
+              styles.previewBox,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+          >
             <Image
               source={{ uri: image.uri }}
               style={styles.previewImage}
@@ -134,6 +152,7 @@ export default function UploadScreen({ navigation }) {
         <TouchableOpacity
           style={[
             styles.uploadButton,
+            { backgroundColor: colors.accent },
             (!image || uploading) && { opacity: 0.6 },
           ]}
           onPress={handleUpload}
@@ -146,13 +165,14 @@ export default function UploadScreen({ navigation }) {
           )}
         </TouchableOpacity>
 
-        <Text style={styles.footerText}>
-          Uploads remaining:{" "}
-          {uploadsRemaining === Infinity ? "∞" : uploadsRemaining}
+        <Text style={[styles.footerText, { color: colors.textSecondary }]}>
+          Uploads remaining: {uploadsRemaining}
         </Text>
 
         <TouchableOpacity onPress={goToSubscription}>
-          <Text style={styles.link}>Have a subscription code?</Text>
+          <Text style={[styles.link, { color: colors.accent }]}>
+            Have a subscription code?
+          </Text>
         </TouchableOpacity>
 
         {timetable && (
@@ -160,7 +180,9 @@ export default function UploadScreen({ navigation }) {
             onPress={() => navigation.navigate("Timetable")}
             style={styles.secondaryButton}
           >
-            <Text style={styles.secondaryText}>Go to current timetable</Text>
+            <Text style={[styles.secondaryText, { color: colors.accent }]}>
+              Go to current timetable
+            </Text>
           </TouchableOpacity>
         )}
       </View>
@@ -171,7 +193,6 @@ export default function UploadScreen({ navigation }) {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: "#061124",
   },
   container: {
     flex: 1,
@@ -180,39 +201,35 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: "900",
-    color: "#fff",
     marginBottom: 8,
   },
   subtitle: {
-    color: "#bcd7ef",
     marginBottom: 16,
   },
   pickButton: {
-    backgroundColor: "rgba(255,255,255,0.05)",
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: "center",
     marginBottom: 12,
+    borderWidth: 1,
   },
   pickButtonText: {
-    color: "#fff",
     fontWeight: "700",
   },
   previewBox: {
-    backgroundColor: "rgba(0,0,0,0.4)",
     borderRadius: 12,
     padding: 8,
     alignItems: "center",
     justifyContent: "center",
     height: 220,
     marginBottom: 16,
+    borderWidth: 1,
   },
   previewImage: {
     width: "100%",
     height: "100%",
   },
   uploadButton: {
-    backgroundColor: "rgba(0,122,255,0.95)",
     paddingVertical: 12,
     borderRadius: 10,
     alignItems: "center",
@@ -224,12 +241,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   footerText: {
-    color: "#789",
     marginTop: 4,
     marginBottom: 8,
   },
   link: {
-    color: "#66b0ff",
     fontWeight: "600",
   },
   secondaryButton: {
@@ -237,7 +252,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   secondaryText: {
-    color: "#66b0ff",
     fontWeight: "600",
   },
 });

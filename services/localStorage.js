@@ -1,41 +1,38 @@
 // services/localStorage.js
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const STORAGE_KEY = 'vitwise_state_v1';
+const KEY = "vitwise-app-state-v2";
 
 export async function saveAppState(partial) {
   try {
-    const existingStr = await AsyncStorage.getItem(STORAGE_KEY);
+    const existingRaw = await AsyncStorage.getItem(KEY);
     let existing = {};
-    if (existingStr) {
+    if (existingRaw) {
       try {
-        existing = JSON.parse(existingStr);
+        existing = JSON.parse(existingRaw);
       } catch {
         existing = {};
       }
     }
-    const merged = { ...existing, ...partial };
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+
+    const merged = {
+      ...existing,
+      ...partial,
+    };
+
+    await AsyncStorage.setItem(KEY, JSON.stringify(merged));
   } catch (e) {
-    console.warn('saveAppState failed', e);
+    console.warn("saveAppState failed", e);
   }
 }
 
 export async function loadAppState() {
   try {
-    const str = await AsyncStorage.getItem(STORAGE_KEY);
-    if (!str) return null;
-    return JSON.parse(str);
+    const raw = await AsyncStorage.getItem(KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
   } catch (e) {
-    console.warn('loadAppState failed', e);
+    console.warn("loadAppState failed", e);
     return null;
-  }
-}
-
-export async function clearAppState() {
-  try {
-    await AsyncStorage.removeItem(STORAGE_KEY);
-  } catch (e) {
-    console.warn('clearAppState failed', e);
   }
 }
