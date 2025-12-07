@@ -1,6 +1,13 @@
 // screens/SubscriptionScreen.js
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useStore } from "../stores/useStore";
@@ -15,41 +22,50 @@ export default function SubscriptionScreen({ navigation }) {
   const setUploadsRemaining = useStore((s) => s.setUploadsRemaining);
   const setSubscriptionCode = useStore((s) => s.setSubscriptionCode);
   const uploadsRemaining = useStore((s) => s.uploadsRemaining);
+  const timetable = useStore((s) => s.timetable);
 
   const colors = useThemeColors();
 
   const handleApply = async () => {
-    if (!codeInput.trim()) {
+    const code = codeInput.trim();
+
+    if (!code) {
       Alert.alert("Empty", "Please enter the subscription code.");
       return;
     }
 
-    if (codeInput.trim() !== VALID_CODE) {
+    if (code !== VALID_CODE) {
       Alert.alert("Invalid code", "The subscription code you entered is not valid.");
       return;
     }
 
-    // give effectively unlimited uploads
     setUploadsRemaining(9999);
-    setSubscriptionCode(codeInput.trim());
+    setSubscriptionCode(code);
 
     await saveAppState({
+      timetable,
       uploadsRemaining: 9999,
-      subscriptionCode: codeInput.trim(),
+      subscriptionCode: code,
     });
 
     Alert.alert("Success", "Subscription activated!", [
       {
         text: "OK",
-        onPress: () => navigation.goBack(),
+        onPress: () => navigation.navigate("Upload"),
       },
     ]);
   };
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={["left", "right"]}>
+    <SafeAreaView
+      style={[styles.safe, { backgroundColor: colors.background }]}
+      edges={["left", "right"]}
+    >
       <View style={styles.container}>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>Subscription</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>
+          Subscription
+        </Text>
+
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
           Enter your subscription code to unlock more uploads.
         </Text>
@@ -86,21 +102,10 @@ export default function SubscriptionScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-    padding: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "900",
-    marginBottom: 8,
-  },
-  subtitle: {
-    marginBottom: 16,
-  },
+  safe: { flex: 1 },
+  container: { flex: 1, padding: 16 },
+  title: { fontSize: 24, fontWeight: "900", marginBottom: 8 },
+  subtitle: { marginBottom: 16 },
   input: {
     borderWidth: 1,
     borderRadius: 10,
@@ -115,12 +120,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
   },
-  buttonText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 16,
-  },
-  info: {
-    marginTop: 4,
-  },
+  buttonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  info: { marginTop: 4 },
 });

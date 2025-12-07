@@ -35,7 +35,7 @@ export default function UploadScreen({ navigation }) {
     if (uploadsRemaining <= 0) {
       Alert.alert(
         "Upload limit reached",
-        "You have used your free upload. Enter a subscription code to unlock more uploads.",
+        "You used your free upload. Enter a subscription code to unlock more uploads.",
         [
           { text: "Cancel", style: "cancel" },
           { text: "Enter code", onPress: goToSubscription },
@@ -63,7 +63,7 @@ export default function UploadScreen({ navigation }) {
       quality: 1,
     });
 
-    if (!result.canceled && result.assets && result.assets.length > 0) {
+    if (!result.canceled && result.assets?.length > 0) {
       setImage(result.assets[0]);
     }
   };
@@ -79,6 +79,7 @@ export default function UploadScreen({ navigation }) {
       setUploading(true);
 
       const result = await uploadImageAsync(image);
+
       if (!result || !result.timetable) {
         throw new Error("Backend did not return a timetable.");
       }
@@ -97,7 +98,12 @@ export default function UploadScreen({ navigation }) {
       Alert.alert("Timetable ready", "Your timetable has been generated!", [
         {
           text: "Open timetable",
-          onPress: () => navigation.navigate("MainDrawer",{screen: "Timetable"}),
+          onPress: () => {
+            navigation.reset({
+              index: 0,
+              routes: [{ name: "MainDrawer" }],
+            });
+          },
         },
       ]);
     } catch (e) {
@@ -118,8 +124,7 @@ export default function UploadScreen({ navigation }) {
           Upload timetable
         </Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          Upload your VIT timetable screenshot once per semester. After that,
-          the app works completely offline.
+          Upload once per semester. After that, the app works offline.
         </Text>
 
         <TouchableOpacity
@@ -191,21 +196,10 @@ export default function UploadScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-    padding: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "900",
-    marginBottom: 8,
-  },
-  subtitle: {
-    marginBottom: 16,
-  },
+  safe: { flex: 1 },
+  container: { flex: 1, padding: 16 },
+  title: { fontSize: 24, fontWeight: "900", marginBottom: 8 },
+  subtitle: { marginBottom: 16 },
   pickButton: {
     borderRadius: 10,
     paddingVertical: 12,
@@ -213,9 +207,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
   },
-  pickButtonText: {
-    fontWeight: "700",
-  },
+  pickButtonText: { fontWeight: "700" },
   previewBox: {
     borderRadius: 12,
     padding: 8,
@@ -240,18 +232,8 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 16,
   },
-  footerText: {
-    marginTop: 4,
-    marginBottom: 8,
-  },
-  link: {
-    fontWeight: "600",
-  },
-  secondaryButton: {
-    marginTop: 16,
-    paddingVertical: 10,
-  },
-  secondaryText: {
-    fontWeight: "600",
-  },
+  footerText: { marginTop: 4, marginBottom: 8 },
+  link: { fontWeight: "600" },
+  secondaryButton: { marginTop: 16, paddingVertical: 10 },
+  secondaryText: { fontWeight: "600" },
 });
