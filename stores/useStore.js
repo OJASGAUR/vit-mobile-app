@@ -1,35 +1,20 @@
 // stores/useStore.js
+
 import { create } from "zustand";
 
-export const useStore = create((set, get) => ({
-  // timetable
+export const useStore = create((set) => ({
   timetable: null,
-
-  // theme
-  darkMode: true, // default to dark
-
-  // UI state
-  currentDay: "Monday",
-  weekView: false,
-
-  // uploads / subscription
-  uploadsRemaining: 1, // 1 free upload for everyone
+  uploadsRemaining: 5,
   subscriptionCode: null,
 
-  // hydration flag (App.js sets this after loading from storage)
-  hydrated: false,
-
-  // --- actions ---
-  setTimetable: (t) => set({ timetable: t }),
-
+  setTimetable: (timetable) => set({ timetable }),
   setUploadsRemaining: (n) => set({ uploadsRemaining: n }),
-  setSubscriptionCode: (code) => set({ subscriptionCode: code }),
+  setSubscriptionCode: (c) => set({ subscriptionCode: c }),
 
-  setDarkMode: (v) => set({ darkMode: v }),
-  toggleTheme: () => set((s) => ({ darkMode: !s.darkMode })),
-
-  setCurrentDay: (d) => set({ currentDay: d }),
-  toggleWeekView: () => set((state) => ({ weekView: !state.weekView })),
-
-  setHydrated: (v) => set({ hydrated: v }),
+  resetAll: () =>
+    set({
+      timetable: null,
+      uploadsRemaining: 5,
+      subscriptionCode: null,
+    }),
 }));
