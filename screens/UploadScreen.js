@@ -1,6 +1,6 @@
 // screens/UploadScreen.js
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -8,21 +8,31 @@ import {
   StyleSheet,
   TextInput,
   Alert,
+  Dimensions,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from "react-native";
-
 import { SafeAreaView } from "react-native-safe-area-context";
-
 import { uploadTextAsync } from "../services/api";
 import { useStore } from "../stores/useStore";
+import { useThemeColors } from "../theme/theme";
+
+const { width, height } = Dimensions.get('window');
 
 export default function UploadScreen({ navigation }) {
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
-
+  const textInputRef = useRef(null);
+  
   const setTimetable = useStore((s) => s.setTimetable);
   const uploadsRemaining = useStore((s) => s.uploadsRemaining);
   const setUploadsRemaining = useStore((s) => s.setUploadsRemaining);
+  const darkMode = useStore((s) => s.darkMode);
+  
+  const colors = useThemeColors();
 
   const handleSubmit = async () => {
     if (!text.trim()) {
@@ -40,8 +50,8 @@ export default function UploadScreen({ navigation }) {
 
       const result = await uploadTextAsync(text);
 
-      setTimetable(result.timetable);
-      setUploadsRemaining(uploadsRemaining - 1);
+      await setTimetable(result.timetable);
+      await setUploadsRemaining(uploadsRemaining - 1);
 
       Alert.alert("Success", "Timetable generated!", [
         { text: "View", onPress: () => navigation.navigate("Timetable") },
@@ -53,73 +63,282 @@ export default function UploadScreen({ navigation }) {
     }
   };
 
+  const handleTextChange = (newText) => {
+    setText(newText);
+    setTimeout(() => {
+      if (textInputRef.current) {
+        textInputRef.current.scrollToEnd({ animated: true });
+      }
+    }, 100);
+  };
+
   return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView style={styles.container}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.keyboardAvoidingView}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.container}>
+            {/* REMOVED the duplicate header completely */}
 
-        <Text style={styles.title}>Paste Timetable Text</Text>
+            {/* Main Content Area - Starts from top */}
+            <View style={styles.mainContent}>
+              
+              {/* Instructions Card - Now at the very top */}
+              <View style={[styles.instructionsCard, { 
+                backgroundColor: darkMode ? '#1E293B' : colors.card,
+                borderColor: darkMode ? 'rgba(255,255,255,0.15)' : colors.border,
+                marginTop: 16, // Added margin to separate from top edge
+              }]}>
+                <View style={styles.instructionsContainer}>
+                  {/* Point 1 */}
+                  <View style={styles.instructionRow}>
+                    <View style={[styles.numberBadge, { backgroundColor: colors.accent }]}>
+                      <Text style={styles.numberText}>1</Text>
+                    </View>
+                    <Text style={[styles.instruction, { color: colors.textPrimary }]}>
+                      Open VTOP in desktop mode
+                    </Text>
+                  </View>
 
-        <TextInput
-          value={text}
-          onChangeText={setText}
-          placeholder="Paste here..."
-          style={styles.input}
-          multiline
-        />
+                  {/* Point 2 */}
+                  <View style={styles.instructionRow}>
+                    <View style={[styles.numberBadge, { backgroundColor: colors.accent }]}>
+                      <Text style={styles.numberText}>2</Text>
+                    </View>
+                    <Text style={[styles.instruction, { color: colors.textPrimary }]}>
+                      Click Academics and Open timetable
+                    </Text>
+                  </View>
 
-        <TouchableOpacity
-          onPress={handleSubmit}
-          style={[styles.button, loading && { opacity: 0.5 }]}
-          disabled={loading}
-        >
-          <Text style={styles.buttonText}>
-            {loading ? "Processing..." : "Generate Timetable"}
-          </Text>
-        </TouchableOpacity>
+                  {/* Point 3 */}
+                  <View style={styles.instructionRow}>
+                    <View style={[styles.numberBadge, { backgroundColor: colors.accent }]}>
+                      <Text style={styles.numberText}>3</Text>
+                    </View>
+                    <Text style={[styles.instruction, { color: colors.textPrimary }]}>
+                      Copy the entire course list from Sl.No to Registered and Approved
+                    </Text>
+                  </View>
 
-        <Text style={styles.remaining}>
-          Uploads remaining: {uploadsRemaining}
-        </Text>
+                  {/* Point 4 */}
+                  <View style={styles.instructionRow}>
+                    <View style={[styles.numberBadge, { backgroundColor: colors.accent }]}>
+                      <Text style={styles.numberText}>4</Text>
+                    </View>
+                    <Text style={[styles.instruction, { color: colors.textPrimary }]}>
+                      Paste it below
+                    </Text>
+                  </View>
+                </View>
+              </View>
 
-      </ScrollView>
+              {/* Fixed Height Text Input */}
+              <View style={[styles.inputContainer, { 
+                borderColor: darkMode ? 'rgba(255,255,255,0.2)' : colors.border,
+                backgroundColor: darkMode ? '#1E293B' : colors.card
+              }]}>
+                <ScrollView
+                  ref={textInputRef}
+                  style={styles.textScrollView}
+                  showsVerticalScrollIndicator={true}
+                  keyboardShouldPersistTaps="handled"
+                  onContentSizeChange={() => {
+                    if (textInputRef.current) {
+                      textInputRef.current.scrollToEnd({ animated: true });
+                    }
+                  }}
+                >
+                  <TextInput
+                    value={text}
+                    onChangeText={handleTextChange}
+                    placeholder="Paste copied text here..."
+                    placeholderTextColor={darkMode ? '#64748B' : colors.textSecondary}
+                    style={[
+                      styles.textInput,
+                      { 
+                        color: colors.textPrimary,
+                      }
+                    ]}
+                    multiline
+                    textAlignVertical="top"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    spellCheck={false}
+                    scrollEnabled={true}
+                  />
+                </ScrollView>
+              </View>
+            </View>
+
+            {/* Fixed Bottom Section */}
+            <View style={[styles.bottomSection, { 
+              backgroundColor: darkMode ? '#0F172A' : '#FFFFFF',
+              borderTopColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'
+            }]}>
+              <TouchableOpacity
+                onPress={handleSubmit}
+                style={[
+                  styles.actionButton, 
+                  loading && { opacity: 0.6 },
+                  { 
+                    backgroundColor: colors.accent,
+                    shadowColor: darkMode ? '#000' : colors.accent,
+                    shadowOpacity: darkMode ? 0.3 : 0.2,
+                  }
+                ]}
+                disabled={loading}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.actionButtonText, {
+                  textShadowColor: darkMode ? 'rgba(0,0,0,0.3)' : 'transparent',
+                  textShadowOffset: darkMode ? { width: 0, height: 1 } : { width: 0, height: 0 },
+                  textShadowRadius: darkMode ? 1 : 0
+                }]}>
+                  {loading ? "Processing..." : "Generate Timetable"}
+                </Text>
+              </TouchableOpacity>
+              
+              <View style={styles.uploadInfo}>
+                <Text style={[styles.uploadText, { 
+                  color: darkMode ? '#94A3B8' : colors.textSecondary
+                }]}>
+                  Uploads remaining: 
+                  <Text style={[styles.uploadCount, { color: colors.accent }]}>
+                    {` ${uploadsRemaining}`}
+                  </Text>
+                </Text>
+              </View>
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1 },
-  container: { flex: 1, padding: 16 },
-  title: {
-    fontSize: 22,
-    fontWeight: "700",
-    marginBottom: 12,
+  safe: { 
+    flex: 1,
   },
-  input: {
-    minHeight: 200,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "#ccc",
+  keyboardAvoidingView: {
+    flex: 1,
+  },
+  container: { 
+    flex: 1,
+  },
+  mainContent: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingBottom: 120, // Removed paddingTop since no header
+  },
+  
+  // Instructions Card - Now at the top
+  instructionsCard: {
     borderRadius: 12,
-    fontSize: 15,
-    textAlignVertical: "top",
+    borderWidth: 1,
     marginBottom: 16,
-    backgroundColor: "#fff",
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  button: {
-    backgroundColor: "#6200ee",
+  instructionsContainer: {
+    gap: 14,
+  },
+  instructionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  numberBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    flexShrink: 0,
+  },
+  numberText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  instruction: {
+    fontSize: 14.5,
+    lineHeight: 20,
+    flex: 1,
+    fontWeight: "500",
+  },
+  
+  // Fixed Height Text Input
+  inputContainer: {
+    flex: 1,
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: "hidden",
+    marginBottom: 16,
+    minHeight: 220,
+    maxHeight: 320,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  textScrollView: {
+    flex: 1,
+  },
+  textInput: {
+    fontSize: 14,
+    lineHeight: 20,
+    textAlignVertical: "top",
+    padding: 16,
+    minHeight: 220,
+  },
+  
+  // Fixed Bottom Section
+  bottomSection: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingTop: 16,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 24,
+    paddingHorizontal: 20,
+    borderTopWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  actionButton: {
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: "center",
-    marginBottom: 12,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    elevation: 4,
   },
-  buttonText: {
-    color: "#fff",
+  actionButtonText: {
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
   },
-  remaining: {
-    fontSize: 14,
-    textAlign: "center",
-    marginVertical: 8,
+  uploadInfo: {
+    alignItems: "center",
+    marginTop: 10,
+  },
+  uploadText: {
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  uploadCount: {
+    fontWeight: "700",
   },
 });

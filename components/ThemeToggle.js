@@ -2,7 +2,6 @@
 import React, { useEffect, useRef } from "react";
 import { Pressable, Animated, Text, StyleSheet } from "react-native";
 import { useStore } from "../stores/useStore";
-import { saveAppState } from "../services/localStorage";
 import { useThemeColors } from "../theme/theme";
 
 export default function ThemeToggle() {
@@ -26,9 +25,7 @@ export default function ThemeToggle() {
   });
 
   const handleToggle = async () => {
-    const next = !darkMode;
-    toggleTheme();
-    await saveAppState({ darkMode: next });
+    await toggleTheme(); // Store auto-saves
   };
 
   return (

@@ -1,5 +1,5 @@
 // App.js
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react"; // ADD useState
 import { View, ActivityIndicator, StyleSheet, StatusBar } from "react-native";
 import {
   NavigationContainer,
@@ -15,8 +15,9 @@ import SubscriptionScreen from "./screens/SubscriptionScreen";
 
 import { useStore } from "./stores/useStore";
 import { loadAppState } from "./services/localStorage";
-import { ThemeProvider, useThemeColors } from "./theme/theme";
+import { useThemeColors } from "./theme/theme";
 import ThemeToggle from "./components/ThemeToggle";
+import SplashScreen from "./components/SplashScreen"; // ADD THIS IMPORT
 
 const Drawer = createDrawerNavigator();
 const Stack = createStackNavigator();
@@ -86,18 +87,55 @@ function UploadStack() {
   );
 }
 
-export default function App() {
+function AppContent() {
   const timetable = useStore((s) => s.timetable);
+  const darkMode = useStore((s) => s.darkMode);
+  const colors = useThemeColors();
+
+  const hasTimetable = !!timetable;
+
+  const navTheme = darkMode
+    ? {
+        ...DarkTheme,
+        colors: {
+          ...DarkTheme.colors,
+          background: colors.background,
+          card: colors.card,
+          text: colors.textPrimary,
+        },
+      }
+    : {
+        ...DefaultTheme,
+        colors: {
+          ...DefaultTheme.colors,
+          background: colors.background,
+          card: colors.card,
+          text: colors.textPrimary,
+        },
+      };
+
+  return (
+    <>
+      <StatusBar
+        barStyle={darkMode ? "light-content" : "dark-content"}
+        backgroundColor={colors.card}
+      />
+      <NavigationContainer theme={navTheme}>
+        {hasTimetable ? <MainDrawer /> : <UploadStack />}
+      </NavigationContainer>
+    </>
+  );
+}
+
+export default function App() {
   const setTimetable = useStore((s) => s.setTimetable);
-  const uploadsRemaining = useStore((s) => s.uploadsRemaining);
   const setUploadsRemaining = useStore((s) => s.setUploadsRemaining);
   const setSubscriptionCode = useStore((s) => s.setSubscriptionCode);
-  const darkMode = useStore((s) => s.darkMode);
   const setDarkMode = useStore((s) => s.setDarkMode);
   const hydrated = useStore((s) => s.hydrated);
   const setHydrated = useStore((s) => s.setHydrated);
-
-  const colors = useThemeColors();
+  
+  const [showSplash, setShowSplash] = useState(true); // ADD THIS STATE
 
   // Hydrate from AsyncStorage
   useEffect(() => {
@@ -125,6 +163,11 @@ export default function App() {
     hydrate();
   }, []);
 
+  // Show splash screen for 2.5 seconds
+  if (showSplash) {
+    return <SplashScreen onAnimationComplete={() => setShowSplash(false)} />;
+  }
+
   if (!hydrated) {
     return (
       <View style={styles.splash}>
@@ -133,39 +176,7 @@ export default function App() {
     );
   }
 
-  const hasTimetable = !!timetable;
-
-  const navTheme = darkMode
-    ? {
-        ...DarkTheme,
-        colors: {
-          ...DarkTheme.colors,
-          background: colors.background,
-          card: colors.card,
-          text: colors.textPrimary,
-        },
-      }
-    : {
-        ...DefaultTheme,
-        colors: {
-          ...DefaultTheme.colors,
-          background: colors.background,
-          card: colors.card,
-          text: colors.textPrimary,
-        },
-      };
-
-  return (
-    <ThemeProvider>
-      <StatusBar
-        barStyle={darkMode ? "light-content" : "dark-content"}
-        backgroundColor={colors.card}
-      />
-      <NavigationContainer theme={navTheme}>
-        {hasTimetable ? <MainDrawer /> : <UploadStack />}
-      </NavigationContainer>
-    </ThemeProvider>
-  );
+  return <AppContent />;
 }
 
 const styles = StyleSheet.create({

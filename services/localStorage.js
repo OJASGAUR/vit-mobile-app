@@ -1,38 +1,27 @@
-// services/localStorage.js
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const KEY = "vitwise-app-state-v2";
-
-export async function saveAppState(partial) {
+export async function saveAppState(state) {
   try {
-    const existingRaw = await AsyncStorage.getItem(KEY);
-    let existing = {};
-    if (existingRaw) {
-      try {
-        existing = JSON.parse(existingRaw);
-      } catch {
-        existing = {};
-      }
-    }
-
-    const merged = {
-      ...existing,
-      ...partial,
-    };
-
-    await AsyncStorage.setItem(KEY, JSON.stringify(merged));
-  } catch (e) {
-    console.warn("saveAppState failed", e);
+    await AsyncStorage.setItem("vitwise-storage", JSON.stringify(state));
+  } catch (err) {
+    console.error("saveAppState error:", err);
   }
 }
 
 export async function loadAppState() {
   try {
-    const raw = await AsyncStorage.getItem(KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch (e) {
-    console.warn("loadAppState failed", e);
+    const json = await AsyncStorage.getItem("vitwise-storage");
+    return json ? JSON.parse(json) : null;
+  } catch (err) {
+    console.error("loadAppState error:", err);
     return null;
+  }
+}
+
+export async function clearAppState() {
+  try {
+    await AsyncStorage.removeItem("vitwise-storage");
+  } catch (err) {
+    console.error("clearAppState error:", err);
   }
 }
