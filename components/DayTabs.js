@@ -1,23 +1,23 @@
 // components/DayTabs.js
-import React from "react";
+import React, { useMemo } from "react";
 import { View, TouchableOpacity, Text, StyleSheet } from "react-native";
 import Animated, { useAnimatedStyle, withTiming } from "react-native-reanimated";
 import { useThemeColors } from "../theme/theme";
 
-export default function DayTabs({ days, currentIndex, onPress }) {
+const DayTabs = React.memo(({ days, currentIndex, onPress }) => {
   const colors = useThemeColors();
   
-  // Filter out empty day strings AND exclude Saturday/Sunday
-  const weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-  const validDays = days.filter(day => 
-    day && 
-    day.trim() !== "" && 
-    weekdays.includes(day)
-  );
-
-  // If no filtered days, fall back to original (but filtered)
-  const displayDays = validDays.length > 0 ? validDays : 
-    days.filter(day => day && day.trim() !== "");
+  // Memoize filtered days to avoid recalculating on every render
+  const displayDays = useMemo(() => {
+    const weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+    const validDays = days.filter(day => 
+      day && 
+      day.trim() !== "" && 
+      weekdays.includes(day)
+    );
+    return validDays.length > 0 ? validDays : 
+      days.filter(day => day && day.trim() !== "");
+  }, [days]);
 
   return (
     <View style={styles.container}>
@@ -27,9 +27,9 @@ export default function DayTabs({ days, currentIndex, onPress }) {
 
         const animatedStyle = useAnimatedStyle(() => {
           return {
-            opacity: withTiming(isActive ? 1 : 0),
+            opacity: withTiming(isActive ? 1 : 0, { duration: 100 }),
           };
-        });
+        }, [isActive]);
 
         return (
           <TouchableOpacity
@@ -68,7 +68,9 @@ export default function DayTabs({ days, currentIndex, onPress }) {
       })}
     </View>
   );
-}
+});
+
+export default DayTabs;
 
 const styles = StyleSheet.create({
   container: {

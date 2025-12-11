@@ -12,18 +12,23 @@ import { createStackNavigator } from "@react-navigation/stack";
 import TimetableScreen from "./screens/TimetableScreen";
 import UploadScreen from "./screens/UploadScreen";
 import SubscriptionScreen from "./screens/SubscriptionScreen";
+import AccountScreen from "./screens/AccountScreen";
+import OnboardingStep1 from "./screens/OnboardingStep1";
+import OnboardingStep2 from "./screens/OnboardingStep2";
 
 import { useStore } from "./stores/useStore";
 import { loadAppState } from "./services/localStorage";
 import { useThemeColors } from "./theme/theme";
 import ThemeToggle from "./components/ThemeToggle";
-import SplashScreen from "./components/SplashScreen"; // ADD THIS IMPORT
+import UserAvatar from "./components/UserAvatar";
+import SplashScreen from "./components/SplashScreen";
 
 const Drawer = createDrawerNavigator();
 const Stack = createStackNavigator();
 
 function MainDrawer() {
   const colors = useThemeColors();
+  const user = useStore((s) => s.user);
 
   return (
     <Drawer.Navigator
@@ -31,7 +36,12 @@ function MainDrawer() {
         headerStyle: { backgroundColor: colors.card },
         headerTintColor: colors.textPrimary,
         headerTitleAlign: "center",
-        headerRight: () => <ThemeToggle />,
+        headerRight: () => (
+          <View style={{ flexDirection: "row", alignItems: "center", marginRight: 12 }}>
+            <UserAvatar size={36} onPress={() => {}} />
+            <ThemeToggle />
+          </View>
+        ),
         drawerStyle: { backgroundColor: colors.background },
         drawerActiveTintColor: colors.textPrimary,
         drawerInactiveTintColor: colors.textSecondary,
@@ -51,6 +61,11 @@ function MainDrawer() {
         name="Subscription"
         component={SubscriptionScreen}
         options={{ title: "Subscription" }}
+      />
+      <Drawer.Screen
+        name="Account"
+        component={AccountScreen}
+        options={{ title: "Account" }}
       />
     </Drawer.Navigator>
   );
@@ -87,12 +102,39 @@ function UploadStack() {
   );
 }
 
+function OnboardingStack() {
+  const colors = useThemeColors();
+
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: colors.card },
+        headerTintColor: colors.textPrimary,
+        headerTitleAlign: "center",
+      }}
+    >
+      <Stack.Screen
+        name="OnboardingStep1"
+        component={OnboardingStep1}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="OnboardingStep2"
+        component={OnboardingStep2}
+        options={{ headerShown: false }}
+      />
+    </Stack.Navigator>
+  );
+}
+
 function AppContent() {
   const timetable = useStore((s) => s.timetable);
+  const user = useStore((s) => s.user);
   const darkMode = useStore((s) => s.darkMode);
   const colors = useThemeColors();
 
   const hasTimetable = !!timetable;
+  const hasUser = !!user;
 
   const navTheme = darkMode
     ? {
@@ -121,7 +163,13 @@ function AppContent() {
         backgroundColor={colors.card}
       />
       <NavigationContainer theme={navTheme}>
-        {hasTimetable ? <MainDrawer /> : <UploadStack />}
+        {!hasUser ? (
+          <OnboardingStack />
+        ) : hasTimetable ? (
+          <MainDrawer />
+        ) : (
+          <UploadStack />
+        )}
       </NavigationContainer>
     </>
   );
@@ -132,6 +180,7 @@ export default function App() {
   const setUploadsRemaining = useStore((s) => s.setUploadsRemaining);
   const setSubscriptionCode = useStore((s) => s.setSubscriptionCode);
   const setDarkMode = useStore((s) => s.setDarkMode);
+  const setUser = useStore((s) => s.setUser);
   const hydrated = useStore((s) => s.hydrated);
   const setHydrated = useStore((s) => s.setHydrated);
   
@@ -152,6 +201,9 @@ export default function App() {
           }
           if (typeof saved.darkMode === "boolean") {
             setDarkMode(saved.darkMode);
+          }
+          if (saved.user) {
+            await setUser(saved.user);
           }
         }
       } catch (e) {

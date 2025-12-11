@@ -8,6 +8,7 @@ export const useStore = create((set, get) => ({
   subscriptionCode: null,
   darkMode: false,
   hydrated: false,
+  user: null, // { name, regNo, avatar, bio, phone, socialLinks: { instagram, twitter, facebook } }
 
   // Helper function to save state
   saveState: async () => {
@@ -17,6 +18,7 @@ export const useStore = create((set, get) => ({
       uploadsRemaining: state.uploadsRemaining,
       subscriptionCode: state.subscriptionCode,
       darkMode: state.darkMode,
+      user: state.user,
     });
   },
 
@@ -49,6 +51,23 @@ export const useStore = create((set, get) => ({
     await get().saveState();
   },
 
+  setUser: async (user) => {
+    set({ user });
+    await get().saveState();
+  },
+
+  updateUser: async (updates) => {
+    const currentUser = get().user;
+    const updatedUser = { ...currentUser, ...updates };
+    set({ user: updatedUser });
+    await get().saveState();
+  },
+
+  logout: async () => {
+    set({ user: null });
+    await get().saveState();
+  },
+
   resetAll: async () => {
     const resetState = {
       timetable: null,
@@ -56,6 +75,7 @@ export const useStore = create((set, get) => ({
       subscriptionCode: null,
       darkMode: false,
       hydrated: true,
+      user: null,
     };
     set(resetState);
     await saveAppState(resetState);
