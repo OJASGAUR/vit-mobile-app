@@ -48,9 +48,18 @@ export default function UnifiedFriendsScreen({ navigation }) {
 
   useEffect(() => {
     if (user?.regNo) {
-      syncFriendsFromBackend(user.regNo);
+      // Use a flag to prevent race conditions
+      let isMounted = true;
+      syncFriendsFromBackend(user.regNo).catch(err => {
+        if (isMounted && __DEV__) {
+          console.error("[UnifiedFriendsScreen] Sync error:", err);
+        }
+      });
+      return () => {
+        isMounted = false;
+      };
     }
-  }, [user?.regNo]);
+  }, [user?.regNo, syncFriendsFromBackend]);
 
   const handleRefresh = useCallback(async () => {
     if (!user?.regNo) return;
@@ -310,6 +319,7 @@ export default function UnifiedFriendsScreen({ navigation }) {
         }
         keyboardShouldPersistTaps="handled"
         removeClippedSubviews={true}
+        scrollEventThrottle={16}
         maxToRenderPerBatch={10}
         updateCellsBatchingPeriod={50}
         initialNumToRender={10}

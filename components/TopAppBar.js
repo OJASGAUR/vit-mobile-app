@@ -5,15 +5,21 @@ import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useThemeColors } from "../theme/theme";
+import { useStore } from "../stores/useStore";
 import UserAvatar from "./UserAvatar";
+import ThemeToggle from "./ThemeToggle";
 
 const TopAppBar = React.memo(({ title, onAvatarPress, showBackButton, onBackPress }) => {
   const colors = useThemeColors();
+  const darkMode = useStore((s) => s.darkMode);
 
   const containerStyle = useMemo(
     () => [
       styles.container,
-      { backgroundColor: colors.card },
+      { 
+        backgroundColor: colors.card,
+        borderBottomColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+      },
       Platform.select({
         android: { elevation: 2 },
         ios: {
@@ -24,7 +30,7 @@ const TopAppBar = React.memo(({ title, onAvatarPress, showBackButton, onBackPres
         },
       }),
     ],
-    [colors.card]
+    [colors.card, darkMode]
   );
 
   return (
@@ -33,17 +39,19 @@ const TopAppBar = React.memo(({ title, onAvatarPress, showBackButton, onBackPres
       style={[styles.safeArea, { backgroundColor: colors.card }]}
     >
       <View style={containerStyle}>
-        {showBackButton ? (
-          <TouchableOpacity
-            onPress={onBackPress}
-            activeOpacity={0.7}
-            style={styles.backButton}
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.spacer} />
-        )}
+        <View style={styles.leftSection}>
+          {showBackButton ? (
+            <TouchableOpacity
+              onPress={onBackPress}
+              activeOpacity={0.7}
+              style={styles.backButton}
+            >
+              <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+            </TouchableOpacity>
+          ) : (
+            <ThemeToggle />
+          )}
+        </View>
         <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
         <TouchableOpacity
           onPress={onAvatarPress}
@@ -72,7 +80,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,0,0,0.05)",
     ...Platform.select({
       android: {
         elevation: 2,
@@ -85,8 +92,10 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  spacer: {
+  leftSection: {
     width: 40,
+    alignItems: "flex-start",
+    justifyContent: "center",
   },
   backButton: {
     width: 40,

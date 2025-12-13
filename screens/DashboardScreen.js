@@ -34,11 +34,13 @@ export default function DashboardScreen({ navigation }) {
     return () => clearInterval(interval);
   }, []);
 
-  // Update next class info - memoized
+  // Update next class info - memoized to prevent unnecessary recalculations
   useEffect(() => {
     if (timetable) {
       const next = findNextClass(timetable, currentTime);
       setNextClassInfo(next);
+    } else {
+      setNextClassInfo(null);
     }
   }, [timetable, currentTime]);
 
@@ -82,6 +84,7 @@ export default function DashboardScreen({ navigation }) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         removeClippedSubviews={true}
+        scrollEventThrottle={16}
         maxToRenderPerBatch={5}
         updateCellsBatchingPeriod={50}
         initialNumToRender={5}

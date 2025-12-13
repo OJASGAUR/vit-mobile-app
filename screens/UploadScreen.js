@@ -75,7 +75,10 @@ export default function UploadScreen({ navigation }) {
 
       // Verify timetable was set correctly by reading from store
       const { timetable: storedTimetable } = useStore.getState();
-      console.log("[UploadScreen] Timetable set, stored timetable:", storedTimetable ? "exists" : "missing");
+      
+      if (__DEV__) {
+        console.log("[UploadScreen] Timetable set, stored timetable:", storedTimetable ? "exists" : "missing");
+      }
       
       if (!storedTimetable) {
         throw new Error("Failed to save timetable. Please try again.");
@@ -83,7 +86,10 @@ export default function UploadScreen({ navigation }) {
 
       // Verify stored timetable has classes (already validated before setting, but double-check)
       const storedHasClasses = Object.values(storedTimetable).some(day => Array.isArray(day) && day.length > 0);
-      console.log("[UploadScreen] Stored timetable has classes:", storedHasClasses);
+      
+      if (__DEV__) {
+        console.log("[UploadScreen] Stored timetable has classes:", storedHasClasses);
+      }
 
       // Wait for state to propagate and AppContent to re-render
       // Use multiple animation frames to ensure React has fully processed the update

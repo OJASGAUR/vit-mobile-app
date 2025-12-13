@@ -286,12 +286,14 @@ function AppContent() {
     });
   const hasUser = !!user;
 
-  // Debug logging
+  // Debug logging (only in development)
   useEffect(() => {
-    console.log("[AppContent] Timetable state:", timetable ? "exists" : "null");
-    console.log("[AppContent] hasTimetable:", hasTimetable);
-    console.log("[AppContent] hasUser:", hasUser);
-    console.log("[AppContent] Will show:", !hasUser ? "OnboardingStack" : hasTimetable ? "MainStack" : "UploadStack");
+    if (__DEV__) {
+      console.log("[AppContent] Timetable state:", timetable ? "exists" : "null");
+      console.log("[AppContent] hasTimetable:", hasTimetable);
+      console.log("[AppContent] hasUser:", hasUser);
+      console.log("[AppContent] Will show:", !hasUser ? "OnboardingStack" : hasTimetable ? "MainStack" : "UploadStack");
+    }
   }, [timetable, hasTimetable, hasUser]);
 
   const navTheme = darkMode

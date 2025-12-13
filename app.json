@@ -5,7 +5,10 @@
     "version": "1.0.0",
     "sdkVersion": "48.0.0",
     "extra": {
-      "BACKEND_URL": "https://vitwise-backend.onrender.com"
+      "BACKEND_URL": "https://vitwise-backend.onrender.com",
+      "eas": {
+        "projectId": "77c4cbe3-769d-415f-a767-1e6f497cda6d"
+      }
     },
     "android": {
       "package": "com.ojasgaur.vitmobileapp",

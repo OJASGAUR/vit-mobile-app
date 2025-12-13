@@ -98,7 +98,21 @@ export const useStore = create((set, get) => ({
   },
 
   logout: async () => {
-    set({ user: null });
+    // Clear all user-specific data on logout
+    const currentDarkMode = get().darkMode; // Preserve theme preference
+    const resetState = {
+      timetable: null,
+      uploadsRemaining: 5, // Reset to default
+      subscriptionCode: null,
+      darkMode: currentDarkMode, // Keep user's theme preference
+      user: null,
+      friends: [],
+      friendRequests: [],
+      attendance: {},
+      attendanceMarks: {},
+      attendanceUploadDate: null,
+    };
+    set(resetState);
     await get().saveState();
   },
 

@@ -475,6 +475,8 @@ export default function UploadAttendanceScreen({ navigation }) {
             style={styles.scrollView}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
+            removeClippedSubviews={true}
+            scrollEventThrottle={16}
           >
             {/* Instructions Card */}
             <View

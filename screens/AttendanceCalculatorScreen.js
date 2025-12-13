@@ -111,6 +111,8 @@ export default function AttendanceCalculatorScreen({ route, navigation }) {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        removeClippedSubviews={true}
+        scrollEventThrottle={16}
       >
         {/* Course Info */}
         <View style={[styles.courseInfoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
