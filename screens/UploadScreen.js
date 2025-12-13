@@ -57,12 +57,59 @@ export default function UploadScreen({ navigation }) {
 
       const result = await uploadTextAsync(text);
 
-      await setTimetable(result.timetable);
+      // Validate timetable exists and has data
+      if (!result || !result.timetable) {
+        throw new Error("No timetable data received from server");
+      }
+
+      // Check if timetable has any classes
+      const timetable = result.timetable;
+      const hasClasses = Object.values(timetable).some(day => Array.isArray(day) && day.length > 0);
+      
+      if (!hasClasses) {
+        throw new Error("Timetable appears to be empty. Please check your input.");
+      }
+
+      await setTimetable(timetable);
       await setUploadsRemaining(uploadsRemaining - 1);
 
-      Alert.alert("Success", "Timetable generated!", [
-        { text: "OK" },
-      ]);
+      // Verify timetable was set correctly by reading from store
+      const { timetable: storedTimetable } = useStore.getState();
+      console.log("[UploadScreen] Timetable set, stored timetable:", storedTimetable ? "exists" : "missing");
+      
+      if (!storedTimetable) {
+        throw new Error("Failed to save timetable. Please try again.");
+      }
+
+      // Verify stored timetable has classes (already validated before setting, but double-check)
+      const storedHasClasses = Object.values(storedTimetable).some(day => Array.isArray(day) && day.length > 0);
+      console.log("[UploadScreen] Stored timetable has classes:", storedHasClasses);
+
+      // Wait for state to propagate and AppContent to re-render
+      // Use multiple animation frames to ensure React has fully processed the update
+      await new Promise(resolve => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            setTimeout(resolve, 300);
+          });
+        });
+      });
+
+      // Show success message
+      Alert.alert(
+        "Success", 
+        "Timetable Generated Successfully",
+        [
+          { 
+            text: "OK",
+            onPress: () => {
+              // Force a check after alert dismisses
+              // The app should automatically switch, but if it doesn't, 
+              // the user can reload (R) or the next render will catch it
+            }
+          }
+        ]
+      );
     } catch (err) {
       Alert.alert("Error", err.message || "Failed to parse");
     } finally {

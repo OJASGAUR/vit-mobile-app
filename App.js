@@ -274,8 +274,25 @@ function AppContent() {
   const darkMode = useStore((s) => s.darkMode);
   const colors = useThemeColors();
 
-  const hasTimetable = !!timetable;
+  // Check if timetable exists and has actual classes
+  // More robust check that handles different timetable structures
+  const hasTimetable = timetable && typeof timetable === 'object' && 
+    Object.keys(timetable).length > 0 &&
+    Object.values(timetable).some(day => {
+      if (Array.isArray(day)) {
+        return day.length > 0;
+      }
+      return false;
+    });
   const hasUser = !!user;
+
+  // Debug logging
+  useEffect(() => {
+    console.log("[AppContent] Timetable state:", timetable ? "exists" : "null");
+    console.log("[AppContent] hasTimetable:", hasTimetable);
+    console.log("[AppContent] hasUser:", hasUser);
+    console.log("[AppContent] Will show:", !hasUser ? "OnboardingStack" : hasTimetable ? "MainStack" : "UploadStack");
+  }, [timetable, hasTimetable, hasUser]);
 
   const navTheme = darkMode
     ? {
@@ -297,13 +314,16 @@ function AppContent() {
         },
       };
 
+  // Use a key to force NavigationContainer to remount when stack changes
+  const navigationKey = !hasUser ? 'onboarding' : hasTimetable ? 'main' : 'upload';
+
   return (
     <>
       <StatusBar
         barStyle={darkMode ? "light-content" : "dark-content"}
         backgroundColor={colors.card}
       />
-      <NavigationContainer theme={navTheme}>
+      <NavigationContainer key={navigationKey} theme={navTheme}>
         {!hasUser ? (
           <OnboardingStack />
         ) : hasTimetable ? (
