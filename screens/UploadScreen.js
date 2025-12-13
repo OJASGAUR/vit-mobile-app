@@ -61,7 +61,7 @@ export default function UploadScreen({ navigation }) {
       await setUploadsRemaining(uploadsRemaining - 1);
 
       Alert.alert("Success", "Timetable generated!", [
-        { text: "View", onPress: () => navigation.navigate("Timetable") },
+        { text: "OK" },
       ]);
     } catch (err) {
       Alert.alert("Error", err.message || "Failed to parse");
