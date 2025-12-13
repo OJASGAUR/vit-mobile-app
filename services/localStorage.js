@@ -2,7 +2,21 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export async function saveAppState(state) {
   try {
-    await AsyncStorage.setItem("vitwise-storage", JSON.stringify(state));
+    await AsyncStorage.setItem(
+      "vitwise-storage",
+      JSON.stringify({
+        timetable: state.timetable,
+        uploadsRemaining: state.uploadsRemaining,
+        subscriptionCode: state.subscriptionCode,
+        darkMode: state.darkMode,
+        user: state.user,
+        friends: state.friends,
+        friendRequests: state.friendRequests,
+        attendance: state.attendance || {},
+        attendanceMarks: state.attendanceMarks || {},
+        attendanceUploadDate: state.attendanceUploadDate || null,
+      })
+    );
   } catch (err) {
     console.error("saveAppState error:", err);
   }
@@ -11,7 +25,14 @@ export async function saveAppState(state) {
 export async function loadAppState() {
   try {
     const json = await AsyncStorage.getItem("vitwise-storage");
-    return json ? JSON.parse(json) : null;
+    const saved = json ? JSON.parse(json) : null;
+    if (saved) {
+      // Ensure attendance is initialized if not present in old data
+      saved.attendance = saved.attendance || {};
+      saved.attendanceMarks = saved.attendanceMarks || {};
+      saved.attendanceUploadDate = saved.attendanceUploadDate || null;
+    }
+    return saved;
   } catch (err) {
     console.error("loadAppState error:", err);
     return null;

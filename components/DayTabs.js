@@ -22,7 +22,7 @@ const DayTabs = React.memo(({ days, currentIndex, onPress }) => {
   return (
     <View style={styles.container}>
       {displayDays.map((day, i) => {
-        const isActive = i === currentIndex;
+        const isActive = currentIndex >= 0 && i === currentIndex;
         const dayAbbrev = day.substring(0, 3); // Mon, Tue, etc.
 
         const animatedStyle = useAnimatedStyle(() => {

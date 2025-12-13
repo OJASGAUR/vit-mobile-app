@@ -10,11 +10,16 @@ import { Ionicons } from "@expo/vector-icons";
 import { useStore } from "../stores/useStore";
 import { useThemeColors } from "../theme/theme";
 import DayTabs from "../components/DayTabs";
+import TopAppBar from "../components/TopAppBar";
+import ProfilePanel from "../components/ProfilePanel";
 import { mergeLabBlocks } from "../helpers/mergeLabs";
 import { findNextClass, isNextClass } from "../utils/nextClassUtils";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { TouchableOpacity } from "react-native";
+import { scheduleAttendanceReminder, cancelReminders, requestPermissions } from "../services/notifications";
 
 // Simplified Animated Gradient Border - Uses timer instead of frame-based updates for better performance
-const AnimatedGradientBorder = React.memo(({ rotation, wavePosition }) => {
+const AnimatedGradientBorder = React.memo(({ rotation, wavePosition, darkMode }) => {
   const [gradientColors, setGradientColors] = useState(['#FF69B4', '#FFD700']);
   const [gradientPositions, setGradientPositions] = useState({
     top: { start: { x: 0, y: 0 }, end: { x: 1, y: 0 } },
@@ -36,27 +41,52 @@ const AnimatedGradientBorder = React.memo(({ rotation, wavePosition }) => {
         const rot = rotation.value;
         const wave = wavePosition.value;
         
-        // Calculate colors based on rotation
+        // Calculate colors based on rotation - brighter colors for light mode
         const phase = (rot * 3) % 3;
         let colors;
-        if (phase < 1) {
-          const t = phase;
-          colors = [
-            `rgba(255, ${Math.floor(105 + t * 150)}, ${Math.floor(180 + t * 75)}, 1)`,
-            `rgba(255, ${Math.floor(255 - t * 63)}, ${Math.floor(0 + t * 200)}, 1)`,
-          ];
-        } else if (phase < 2) {
-          const t = phase - 1;
-          colors = [
-            `rgba(${Math.floor(255 - t * 255)}, ${Math.floor(255 - t * 175)}, ${Math.floor(0 + t * 255)}, 1)`,
-            `rgba(${Math.floor(0 + t * 100)}, ${Math.floor(100 + t * 155)}, ${Math.floor(255 - t * 55)}, 1)`,
-          ];
+        
+        if (darkMode) {
+          // Dark mode: softer, more visible colors
+          if (phase < 1) {
+            const t = phase;
+            colors = [
+              `rgba(255, ${Math.floor(105 + t * 150)}, ${Math.floor(180 + t * 75)}, 1)`,
+              `rgba(255, ${Math.floor(255 - t * 63)}, ${Math.floor(0 + t * 200)}, 1)`,
+            ];
+          } else if (phase < 2) {
+            const t = phase - 1;
+            colors = [
+              `rgba(${Math.floor(255 - t * 255)}, ${Math.floor(255 - t * 175)}, ${Math.floor(0 + t * 255)}, 1)`,
+              `rgba(${Math.floor(0 + t * 100)}, ${Math.floor(100 + t * 155)}, ${Math.floor(255 - t * 55)}, 1)`,
+            ];
+          } else {
+            const t = phase - 2;
+            colors = [
+              `rgba(${Math.floor(0 + t * 255)}, ${Math.floor(100 + t * 155)}, ${Math.floor(255 - t * 75)}, 1)`,
+              `rgba(255, ${Math.floor(105 + t * 150)}, ${Math.floor(180 + t * 75)}, 1)`,
+            ];
+          }
         } else {
-          const t = phase - 2;
-          colors = [
-            `rgba(${Math.floor(0 + t * 255)}, ${Math.floor(100 + t * 155)}, ${Math.floor(255 - t * 75)}, 1)`,
-            `rgba(255, ${Math.floor(105 + t * 150)}, ${Math.floor(180 + t * 75)}, 1)`,
-          ];
+          // Light mode: brighter, more saturated colors for better visibility
+          if (phase < 1) {
+            const t = phase;
+            colors = [
+              `rgba(236, 72, 153, 1)`, // Bright pink
+              `rgba(251, 191, 36, 1)`, // Bright yellow
+            ];
+          } else if (phase < 2) {
+            const t = phase - 1;
+            colors = [
+              `rgba(251, 191, 36, 1)`, // Bright yellow
+              `rgba(59, 130, 246, 1)`, // Bright blue
+            ];
+          } else {
+            const t = phase - 2;
+            colors = [
+              `rgba(59, 130, 246, 1)`, // Bright blue
+              `rgba(236, 72, 153, 1)`, // Bright pink
+            ];
+          }
         }
         
         // Calculate positions based on wave (simplified calculation without interpolate)
@@ -89,7 +119,7 @@ const AnimatedGradientBorder = React.memo(({ rotation, wavePosition }) => {
         cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [rotation, wavePosition]);
+  }, [rotation, wavePosition, darkMode]);
 
   return (
     <View style={styles.gradientBorderContainer} pointerEvents="none">
@@ -137,11 +167,18 @@ const AnimatedGradientBorder = React.memo(({ rotation, wavePosition }) => {
 });
 
 export default function TimetableScreen() {
+  const [profilePanelVisible, setProfilePanelVisible] = useState(false);
   const timetable = useStore((s) => s.timetable);
   const colors = useThemeColors();
   const darkMode = useStore((s) => s.darkMode);
+  const markPresent = useStore((s) => s.markPresent);
+  const markAbsent = useStore((s) => s.markAbsent);
+  const hasAttendanceBeenMarked = useStore((s) => s.hasAttendanceBeenMarked);
+  const getAttendanceMark = useStore((s) => s.getAttendanceMark);
+  const generateSlotId = useStore((s) => s.generateSlotId);
+  const attendanceUploadDate = useStore((s) => s.attendanceUploadDate);
   const pagerRef = useRef(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(-1); // -1 means no tab selected
   const [nextClassInfo, setNextClassInfo] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   
@@ -173,6 +210,12 @@ export default function TimetableScreen() {
   const displayDays = filteredDays.length > 0 ? filteredDays : 
     days.filter(day => day && day.trim() !== "");
 
+  // Check if today is weekend - memoize to avoid recalculation
+  const isWeekend = useMemo(() => {
+    const today = new Date().getDay(); // 0 = Sunday, 1 = Monday, etc.
+    return today === 0 || today === 6; // Sunday or Saturday
+  }, [currentTime]); // Recalculate when time changes (but only check once per minute)
+
   // Memoize sorted and merged events for each day to avoid recalculating on every render
   const memoizedEvents = useMemo(() => {
     const eventsMap = {};
@@ -188,8 +231,13 @@ export default function TimetableScreen() {
     return eventsMap;
   }, [timetable, displayDays]);
 
-  // Function to get current day index
-  const getCurrentDayIndex = () => {
+  // Function to get current day index - memoized
+  const getCurrentDayIndex = useCallback(() => {
+    // If it's weekend, return -1 (no tab selected)
+    if (isWeekend) {
+      return -1;
+    }
+    
     const today = new Date().getDay(); // 0 = Sunday, 1 = Monday, etc.
     
     // Map JavaScript day to your weekday array
@@ -208,9 +256,9 @@ export default function TimetableScreen() {
       day.toLowerCase() === todayName.toLowerCase()
     );
     
-    // If today is in the timetable, return its index, otherwise return 0
-    return todayIndex >= 0 ? todayIndex : 0;
-  };
+    // If today is in the timetable, return its index, otherwise return -1 (no selection)
+    return todayIndex >= 0 ? todayIndex : -1;
+  }, [isWeekend, displayDays]);
 
   // Update time every second for countdown
   useEffect(() => {
@@ -223,15 +271,22 @@ export default function TimetableScreen() {
 
   // Update next class info - use currentTime to fix countdown timing
   useEffect(() => {
-    if (timetable) {
+    if (timetable && !isWeekend) {
+      const next = findNextClass(timetable, currentTime);
+      setNextClassInfo(next);
+    } else if (isWeekend) {
+      // On weekend, find next Monday class
       const next = findNextClass(timetable, currentTime);
       setNextClassInfo(next);
     }
-  }, [timetable, currentTime]);
+  }, [timetable, currentTime, isWeekend]);
 
-  // Start animated gradient border animation
+  // Start animated gradient border animation (only if today's classes are not done)
   useEffect(() => {
-    if (nextClassInfo && nextClassInfo.class) {
+    if (nextClassInfo && 
+        nextClassInfo.class && 
+        !nextClassInfo.allTodayClassesDone &&
+        nextClassInfo.isToday) {
       // Gradient rotation - cycles through colors (pink -> yellow -> blue -> pink)
       gradientRotation.value = withRepeat(
         withTiming(1, {
@@ -257,20 +312,68 @@ export default function TimetableScreen() {
     }
   }, [nextClassInfo]);
 
-  // Set initial page to current day on mount
+  // Set initial page to current day on mount (only if not weekend)
   useEffect(() => {
-    if (displayDays.length > 0) {
+    if (displayDays.length > 0 && !isWeekend) {
       const todayIndex = getCurrentDayIndex();
-      setCurrentIndex(todayIndex);
-      
-      // Small delay to ensure PagerView is ready
-      setTimeout(() => {
-        if (pagerRef.current) {
-          pagerRef.current.setPage(todayIndex);
-        }
-      }, 100);
+      if (todayIndex >= 0) {
+        setCurrentIndex(todayIndex);
+        
+        // Small delay to ensure PagerView is ready
+        setTimeout(() => {
+          if (pagerRef.current) {
+            pagerRef.current.setPage(todayIndex);
+          }
+        }, 100);
+      }
+    } else if (isWeekend) {
+      // On weekend, set to -1 (no tab selected)
+      setCurrentIndex(-1);
     }
-  }, [displayDays.length]); // Run when displayDays is available
+  }, [displayDays.length, isWeekend]); // Run when displayDays is available or weekend status changes
+
+  // Schedule attendance reminder after last class
+  useEffect(() => {
+    const setupReminders = async () => {
+      if (!timetable || isWeekend) {
+        await cancelReminders();
+        return;
+      }
+      
+      const today = new Date();
+      const todayDayName = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][today.getDay()];
+      const todayEvents = timetable[todayDayName] || [];
+      
+      if (todayEvents.length === 0) {
+        await cancelReminders();
+        return;
+      }
+      
+      // Find last class end time
+      let lastEndTime = null;
+      todayEvents.forEach(evt => {
+        if (evt.end) {
+          const [hour, min] = evt.end.split(':').map(Number);
+          const endTime = new Date();
+          endTime.setHours(hour, min, 0, 0);
+          if (!lastEndTime || endTime > lastEndTime) {
+            lastEndTime = endTime;
+          }
+        }
+      });
+      
+      if (lastEndTime && lastEndTime > today) {
+        const hasPermission = await requestPermissions();
+        if (hasPermission) {
+          await scheduleAttendanceReminder(lastEndTime);
+        }
+      } else {
+        await cancelReminders();
+      }
+    };
+    
+    setupReminders();
+  }, [timetable, isWeekend]);
 
   // Animated style for ongoing badge
   const animatedBadgeStyle = useAnimatedStyle(() => {
@@ -281,9 +384,14 @@ export default function TimetableScreen() {
     };
   });
 
-  // Auto-scroll to highlighted card (only if user hasn't scrolled manually)
+  // Auto-scroll to highlighted card (only if user hasn't scrolled manually and today's classes are not done)
   useEffect(() => {
-    if (nextClassInfo && nextClassInfo.class && nextClassInfo.day && autoScrollEnabledRef.current) {
+    if (nextClassInfo && 
+        nextClassInfo.class && 
+        nextClassInfo.day && 
+        !nextClassInfo.allTodayClassesDone &&
+        nextClassInfo.isToday &&
+        autoScrollEnabledRef.current) {
       const dayIndex = displayDays.findIndex(d => d === nextClassInfo.day);
       if (dayIndex === currentIndex) {
         // Check if user has scrolled recently (within last 3 seconds)
@@ -330,35 +438,62 @@ export default function TimetableScreen() {
     }
   }, [nextClassInfo, currentIndex, displayDays, timetable]);
   
-  // Handle scroll events to detect user scrolling
-  const handleScrollBeginDrag = (day) => {
+  // Handle scroll events to detect user scrolling - memoized with useCallback
+  const handleScrollBeginDrag = useCallback((day) => {
     userScrollingRef.current[day] = true;
     autoScrollEnabledRef.current = false;
     lastScrollTimeRef.current[day] = Date.now();
-  };
+  }, []);
   
-  const handleScroll = (day) => {
-    // Track any scroll movement
-    lastScrollTimeRef.current[day] = Date.now();
-    userScrollingRef.current[day] = true;
-    autoScrollEnabledRef.current = false;
-  };
+  const handleScroll = useCallback((day) => {
+    // Track any scroll movement - throttled to avoid excessive updates
+    const now = Date.now();
+    const lastTime = lastScrollTimeRef.current[day] || 0;
+    if (now - lastTime > 100) { // Throttle to 10fps
+      lastScrollTimeRef.current[day] = now;
+      userScrollingRef.current[day] = true;
+      autoScrollEnabledRef.current = false;
+    }
+  }, []);
   
-  const handleScrollEndDrag = (day) => {
+  const handleScrollEndDrag = useCallback((day) => {
     // Mark that user finished scrolling
     lastScrollTimeRef.current[day] = Date.now();
     // Keep auto-scroll disabled for this session
     // It will only re-enable if user switches days or app restarts
-  };
+  }, []);
+  
+  const handleTabPress = useCallback((i) => {
+    setCurrentIndex(i);
+    if (pagerRef.current) {
+      pagerRef.current.setPage(i);
+    }
+    // Reset scroll tracking for the new day to allow auto-scroll
+    const newDay = displayDays[i];
+    if (newDay) {
+      userScrollingRef.current[newDay] = false;
+      lastScrollTimeRef.current[newDay] = 0;
+      autoScrollEnabledRef.current = true;
+    }
+  }, [displayDays]);
 
   return (
-    <View style={[styles.root, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      style={[styles.root, { backgroundColor: colors.background }]}
+      edges={["bottom"]}
+    >
+      <TopAppBar
+        title="Timetable"
+        onAvatarPress={() => setProfilePanelVisible(true)}
+      />
       <DayTabs
         days={displayDays}
-        currentIndex={currentIndex}
+        currentIndex={currentIndex >= 0 ? currentIndex : -1}
         onPress={(i) => {
           setCurrentIndex(i);
-          pagerRef.current?.setPage(i);
+          if (pagerRef.current) {
+            pagerRef.current.setPage(i);
+          }
           // Reset scroll tracking for the new day to allow auto-scroll
           const newDay = displayDays[i];
           if (newDay) {
@@ -369,69 +504,114 @@ export default function TimetableScreen() {
         }}
       />
 
-      {/* Countdown Bar */}
-      {nextClassInfo && nextClassInfo.class && (
+      {/* Weekend Message Bar */}
+      {isWeekend && (
         <View style={[
-          styles.countdownBar,
+          styles.weekendMessageBar,
           {
-            backgroundColor: nextClassInfo.isOngoing 
-              ? (darkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(37, 99, 235, 0.1)')
-              : colors.card,
+            backgroundColor: colors.card,
             borderBottomColor: colors.border,
           }
         ]}>
-          <View style={styles.countdownContent}>
-            {nextClassInfo.isOngoing ? (
-              <Animated.View style={animatedBadgeStyle}>
-                <View style={styles.ongoingBadge}>
-                  <Ionicons 
-                    name="radio-button-on" 
-                    size={14} 
-                    color={colors.accent}
-                    style={styles.ongoingIcon}
-                  />
-                  <Text style={[styles.ongoingText, { color: colors.accent }]}>
-                    CLASS ONGOING
-                  </Text>
-                </View>
-              </Animated.View>
-            ) : (
-              <>
-                <Ionicons 
-                  name="time-outline" 
-                  size={16} 
-                  color={colors.accent}
-                  style={styles.countdownIcon}
-                />
-                <Text style={[styles.countdownLabel, { color: colors.textSecondary }]}>
-                  START IN:
-                </Text>
-                <Text style={[styles.countdownTime, { color: colors.accent }]}>
-                  {nextClassInfo.timeRemaining}
-                </Text>
-              </>
-            )}
+          <View style={styles.weekendMessageContent}>
+            <Ionicons 
+              name="calendar-outline" 
+              size={20} 
+              color={colors.textSecondary}
+              style={styles.weekendMessageIcon}
+            />
+            <Text style={[styles.weekendMessageText, { color: colors.textPrimary }]}>
+              No classes today
+            </Text>
           </View>
         </View>
       )}
 
+      {/* Countdown Bar */}
+      {!isWeekend && nextClassInfo && (
+        nextClassInfo.allTodayClassesDone ? (
+          <View style={[
+            styles.countdownBar,
+            {
+              backgroundColor: colors.card,
+              borderBottomColor: colors.border,
+            }
+          ]}>
+            <View style={styles.countdownContent}>
+              <Ionicons 
+                name="checkmark-circle-outline" 
+                size={18} 
+                color={colors.textSecondary}
+                style={styles.countdownIcon}
+              />
+              <Text style={[styles.countdownLabel, { color: colors.textSecondary }]}>
+                No remaining classes for today
+              </Text>
+            </View>
+          </View>
+        ) : nextClassInfo.class ? (
+          <View style={[
+            styles.countdownBar,
+            {
+              backgroundColor: nextClassInfo.isOngoing 
+                ? (darkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(37, 99, 235, 0.1)')
+                : colors.card,
+              borderBottomColor: colors.border,
+            }
+          ]}>
+            <View style={styles.countdownContent}>
+              {nextClassInfo.isOngoing ? (
+                <Animated.View style={animatedBadgeStyle}>
+                  <View style={styles.ongoingBadge}>
+                    <Ionicons 
+                      name="radio-button-on" 
+                      size={14} 
+                      color={colors.accent}
+                      style={styles.ongoingIcon}
+                    />
+                    <Text style={[styles.ongoingText, { color: colors.accent }]}>
+                      CLASS ONGOING
+                    </Text>
+                  </View>
+                </Animated.View>
+              ) : (
+                <>
+                  <Ionicons 
+                    name="time-outline" 
+                    size={16} 
+                    color={colors.accent}
+                    style={styles.countdownIcon}
+                  />
+                  <Text style={[styles.countdownLabel, { color: colors.textSecondary }]}>
+                    START IN:
+                  </Text>
+                  <Text style={[styles.countdownTime, { color: colors.accent }]}>
+                    {nextClassInfo.timeRemaining}
+                  </Text>
+                </>
+              )}
+            </View>
+          </View>
+        ) : null
+      )}
+
       <PagerView
-        ref={pagerRef}
-        style={styles.pager}
-        initialPage={currentIndex} // Set initial page to current day
-        onPageSelected={(e) => {
-          const newIndex = e.nativeEvent.position;
-          setCurrentIndex(newIndex);
-        }}
-        onPageScroll={(e) => {
-          // Update index immediately during swipe for instant feedback
-          const offset = e.nativeEvent.offset;
-          const position = e.nativeEvent.position;
-          if (offset === 0 && position !== currentIndex) {
-            setCurrentIndex(position);
-          }
-        }}
-      >
+          ref={pagerRef}
+          style={styles.pager}
+          initialPage={currentIndex >= 0 ? currentIndex : 0} // Set initial page to current day or 0
+          onPageSelected={(e) => {
+            const newIndex = e.nativeEvent.position;
+            setCurrentIndex(newIndex);
+          }}
+          onPageScroll={(e) => {
+            // Update index immediately during swipe for instant feedback
+            const offset = e.nativeEvent.offset;
+            const position = e.nativeEvent.position;
+            if (offset === 0 && position !== currentIndex) {
+              setCurrentIndex(position);
+            }
+          }}
+        >
         {displayDays.map((day, index) => {
           const events = memoizedEvents[day] || [];
 
@@ -448,7 +628,11 @@ export default function TimetableScreen() {
               onScrollBeginDrag={() => handleScrollBeginDrag(day)}
               onScrollEndDrag={() => handleScrollEndDrag(day)}
               onScroll={() => handleScroll(day)}
-              scrollEventThrottle={16}
+              scrollEventThrottle={100}
+              maxToRenderPerBatch={5}
+              updateCellsBatchingPeriod={50}
+              initialNumToRender={5}
+              windowSize={5}
             >
               <Text
                 style={[styles.dayTitle, { color: colors.textPrimary }]}
@@ -465,7 +649,11 @@ export default function TimetableScreen() {
                   ? 'rgba(0, 200, 83, 0.25)'
                   : 'rgba(33, 150, 243, 0.25)';
 
-                const isNextClassCard = isNextClass(evt, nextClassInfo) && day === nextClassInfo?.day;
+                // Only highlight if it's today's class and all today's classes are not done
+                const isNextClassCard = !nextClassInfo?.allTodayClassesDone && 
+                                       isNextClass(evt, nextClassInfo) && 
+                                       day === nextClassInfo?.day &&
+                                       nextClassInfo?.isToday;
 
                 return (
                   <View
@@ -477,6 +665,7 @@ export default function TimetableScreen() {
                       <AnimatedGradientBorder
                         rotation={gradientRotation}
                         wavePosition={wavePosition}
+                        darkMode={darkMode}
                       />
                     )}
                     <View
@@ -496,36 +685,132 @@ export default function TimetableScreen() {
                         }
                       ]}
                     >
-                    <View style={styles.slotContainer}>
-                      <Text style={[styles.slot, { color: colors.textPrimary }]}>
-                        {evt.slot}
-                      </Text>
-                    </View>
+                      {/* Row 1: Course Name (left) + Slot Code (right) */}
+                      <View style={styles.cardHeader}>
+                        <Text
+                          style={[styles.courseName, { color: colors.textPrimary }]}
+                          numberOfLines={2}
+                        >
+                          {evt.courseName.replace(/\s*\(.*?\)/g, '')}
+                        </Text>
+                        <Text style={[styles.slotCode, { color: colors.textSecondary }]}>
+                          {evt.slot}
+                        </Text>
+                      </View>
 
-                    <Text
-                      style={[styles.course, { color: colors.textPrimary }]}
-                      numberOfLines={2}
-                    >
-                      {evt.courseName.replace(/\s*\(.*?\)/g, '')}
-                    </Text>
+                      {/* Row 2 & 3: Three-column layout */}
+                      <View style={styles.cardContent}>
+                        {/* Left Column: Stacked Present/Absent buttons */}
+                        <View style={styles.leftColumn}>
+                          {(() => {
+                            const today = new Date();
+                            const todayDayName = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][today.getDay()];
+                            const isToday = day === todayDayName;
+                            
+                            // Check if attendance was uploaded and if this class is on or after upload date
+                            let canMarkAttendance = isToday;
+                            if (attendanceUploadDate) {
+                              const uploadDate = new Date(attendanceUploadDate);
+                              const todayDate = new Date();
+                              todayDate.setHours(0, 0, 0, 0);
+                              uploadDate.setHours(0, 0, 0, 0);
+                              // Only allow marking if today is on or after upload date
+                              canMarkAttendance = isToday && todayDate >= uploadDate;
+                            }
+                            
+                            const slotId = canMarkAttendance ? generateSlotId(evt.courseCode, evt.type, evt.slot, day, idx) : null;
+                            const isMarked = slotId ? hasAttendanceBeenMarked(slotId) : false;
+                            const markType = slotId ? getAttendanceMark(slotId) : null;
 
-                    <View style={styles.timeContainer}>
-                      <Text style={[styles.timeText, { color: colors.textPrimary }]}>
-                        {evt.start} - {evt.end}
-                      </Text>
-                    </View>
+                            // Only show buttons for classes on or after upload date
+                            if (!canMarkAttendance) {
+                              return <View style={styles.buttonPlaceholder} />;
+                            }
 
-                    <View style={styles.locationContainer}>
-                      <Ionicons 
-                        name="location-outline" 
-                        size={16}
-                        color={colors.textSecondary} 
-                        style={{ opacity: 0.9 }}
-                      />
-                      <Text style={[styles.location, { color: colors.textSecondary }]}>
-                        {evt.venue}
-                      </Text>
-                    </View>
+                            return (
+                              <View style={styles.attendanceButtonsStack}>
+                                <TouchableOpacity
+                                  style={[
+                                    styles.attendanceButtonCompact,
+                                    isMarked && markType === 'present' 
+                                      ? styles.presentButtonFilled 
+                                      : styles.presentButtonOutline,
+                                    isMarked && markType !== 'present' && styles.attendanceButtonDisabled,
+                                  ]}
+                                  onPress={async () => {
+                                    if (slotId && !isMarked) {
+                                      await markPresent(evt.courseCode, evt.type, slotId);
+                                    }
+                                  }}
+                                  disabled={isMarked}
+                                  activeOpacity={0.7}
+                                >
+                                  <Ionicons 
+                                    name="checkmark" 
+                                    size={14} 
+                                    color={isMarked && markType === 'present' ? "#FFF" : "#10B981"}
+                                  />
+                                  <Text style={[
+                                    styles.attendanceButtonTextCompact,
+                                    { color: isMarked && markType === 'present' ? "#FFF" : "#10B981" }
+                                  ]}>
+                                    Present
+                                  </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  style={[
+                                    styles.attendanceButtonCompact,
+                                    isMarked && markType === 'absent' 
+                                      ? styles.absentButtonFilled 
+                                      : styles.absentButtonOutline,
+                                    isMarked && markType !== 'absent' && styles.attendanceButtonDisabled,
+                                  ]}
+                                  onPress={async () => {
+                                    if (slotId && !isMarked) {
+                                      await markAbsent(evt.courseCode, evt.type, slotId);
+                                    }
+                                  }}
+                                  disabled={isMarked}
+                                  activeOpacity={0.7}
+                                >
+                                  <Ionicons 
+                                    name="close" 
+                                    size={14} 
+                                    color={isMarked && markType === 'absent' ? "#FFF" : "#EF4444"}
+                                  />
+                                  <Text style={[
+                                    styles.attendanceButtonTextCompact,
+                                    { color: isMarked && markType === 'absent' ? "#FFF" : "#EF4444" }
+                                  ]}>
+                                    Absent
+                                  </Text>
+                                </TouchableOpacity>
+                              </View>
+                            );
+                          })()}
+                        </View>
+
+                        {/* Center Column: Time range */}
+                        <View style={styles.centerColumn}>
+                          <Text style={[styles.timeTextCompact, { color: colors.textPrimary }]}>
+                            {evt.start} - {evt.end}
+                          </Text>
+                        </View>
+
+                        {/* Right Column: Location */}
+                        <View style={styles.rightColumn}>
+                          <View style={styles.locationRow}>
+                            <Ionicons 
+                              name="location-outline" 
+                              size={14}
+                              color={colors.textSecondary} 
+                            />
+                            <Text style={[styles.locationTextCompact, { color: colors.textSecondary }]}>
+                              {evt.venue}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
                     </View>
                   </View>
                 );
@@ -545,7 +830,11 @@ export default function TimetableScreen() {
           );
         })}
       </PagerView>
-    </View>
+      <ProfilePanel
+        visible={profilePanelVisible}
+        onClose={() => setProfilePanelVisible(false)}
+      />
+    </SafeAreaView>
   );
 }
 
@@ -614,14 +903,14 @@ const styles = StyleSheet.create({
   },
   cardWrapper: {
     position: 'relative',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   gradientBorderContainer: {
     position: 'absolute',
-    top: -3,
-    left: -3,
-    right: -3,
-    bottom: -3,
+    top: -4,
+    left: -4,
+    right: -4,
+    bottom: -4,
     borderRadius: 17,
     zIndex: 1,
     overflow: 'hidden',
@@ -631,7 +920,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 3,
+    height: 4,
     borderTopLeftRadius: 17,
     borderTopRightRadius: 17,
   },
@@ -640,7 +929,7 @@ const styles = StyleSheet.create({
     top: 0,
     right: 0,
     bottom: 0,
-    width: 3,
+    width: 4,
     borderTopRightRadius: 17,
     borderBottomRightRadius: 17,
   },
@@ -649,7 +938,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 3,
+    height: 4,
     borderBottomLeftRadius: 17,
     borderBottomRightRadius: 17,
   },
@@ -658,7 +947,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     bottom: 0,
-    width: 3,
+    width: 4,
     borderTopLeftRadius: 17,
     borderBottomLeftRadius: 17,
   },
@@ -670,47 +959,120 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 14,
     position: 'relative',
-    minHeight: 140,
+    minHeight: 150,
+    maxHeight: 170,
   },
-  slotContainer: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
   },
-  slot: {
-    fontSize: 14,
-    fontWeight: "800",
-    opacity: 0.9,
-  },
-  course: {
-    fontSize: 17,
+  courseName: {
+    fontSize: 16,
     fontWeight: "700",
-    marginBottom: 6,
-    paddingRight: 55,
+    flex: 1,
+    marginRight: 12,
+    lineHeight: 22,
   },
-  timeContainer: {
-    alignItems: 'center',
-    marginVertical: 10,
-  },
-  timeText: {
-    fontSize: 19,
+  slotCode: {
+    fontSize: 13,
     fontWeight: "600",
+    opacity: 0.7,
   },
-  locationContainer: {
+  cardContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 14,
+  },
+  leftColumn: {
+    flex: 0,
+    alignItems: 'flex-start',
+  },
+  centerColumn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rightColumn: {
+    flex: 0,
+    alignItems: 'flex-end',
+  },
+  attendanceButtonsStack: {
+    gap: 6,
+  },
+  buttonPlaceholder: {
+    height: 56,
+  },
+  attendanceButtonCompact: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
-    marginTop: 6,
+    justifyContent: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    gap: 5,
+    minWidth: 75,
+    height: 30,
   },
-  location: {
+  presentButtonFilled: {
+    backgroundColor: '#10B981',
+  },
+  presentButtonOutline: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#10B981',
+  },
+  absentButtonFilled: {
+    backgroundColor: '#EF4444',
+  },
+  absentButtonOutline: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#EF4444',
+  },
+  attendanceButtonTextCompact: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  timeTextCompact: {
     fontSize: 14,
     fontWeight: "600",
-    marginLeft: 6,
-    opacity: 0.9,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  locationTextCompact: {
+    fontSize: 13,
+    fontWeight: "500",
   },
   emptyText: {
     marginTop: 30,
     textAlign: "center",
     fontSize: 15,
+  },
+  weekendMessageBar: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+  },
+  weekendMessageContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  weekendMessageIcon: {
+    marginRight: 4,
+  },
+  weekendMessageText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  attendanceButtonDisabled: {
+    opacity: 0.5,
   },
 });

@@ -1,35 +1,45 @@
 // components/UserAvatar.js
 
-import React from "react";
+import React, { useMemo, useCallback } from "react";
 import { View, Text, Image, TouchableOpacity, StyleSheet } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useStore } from "../stores/useStore";
 import { generateAvatarColor, getInitials } from "../utils/avatarUtils";
 
-export default function UserAvatar({ size = 36, onPress }) {
+const UserAvatar = React.memo(({ size = 36, onPress }) => {
   const user = useStore((s) => s.user);
   const navigation = useNavigation();
 
-  if (!user) {
-    return null;
-  }
-
-  const handlePress = () => {
+  const handlePress = useCallback(() => {
     if (onPress) {
       onPress();
     } else {
       navigation.navigate("Account");
     }
-  };
+  }, [onPress, navigation]);
 
-  const avatarColor = user.avatarColor || generateAvatarColor(user.name);
-  const initials = user.initials || getInitials(user.name);
+  const avatarColor = useMemo(
+    () => user?.avatarColor || (user?.name ? generateAvatarColor(user.name) : "#2563EB"),
+    [user?.avatarColor, user?.name]
+  );
 
-  const avatarStyle = {
-    width: size,
-    height: size,
-    borderRadius: size / 2,
-  };
+  const initials = useMemo(
+    () => user?.initials || (user?.name ? getInitials(user.name) : "U"),
+    [user?.initials, user?.name]
+  );
+
+  const avatarStyle = useMemo(
+    () => ({
+      width: size,
+      height: size,
+      borderRadius: size / 2,
+    }),
+    [size]
+  );
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <TouchableOpacity onPress={handlePress} activeOpacity={0.7} style={styles.container}>
@@ -42,7 +52,11 @@ export default function UserAvatar({ size = 36, onPress }) {
       )}
     </TouchableOpacity>
   );
-}
+});
+
+UserAvatar.displayName = "UserAvatar";
+
+export default UserAvatar;
 
 const styles = StyleSheet.create({
   container: {

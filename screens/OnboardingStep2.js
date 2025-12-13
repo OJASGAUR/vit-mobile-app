@@ -16,6 +16,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useThemeColors } from "../theme/theme";
 import { useStore } from "../stores/useStore";
 import { generateAvatarColor, getInitials } from "../utils/avatarUtils";
+import { BACKEND_URL } from "../services/backend";
 
 export default function OnboardingStep2({ navigation, route }) {
   const { name, regNo } = route.params;
@@ -70,6 +71,27 @@ export default function OnboardingStep2({ navigation, route }) {
           facebook: "",
         },
       };
+
+      // Register user on backend
+      try {
+        await fetch(`${BACKEND_URL}/api/user/register`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: userData.name,
+            regNo: userData.regNo,
+            avatar: userData.avatar,
+            bio: userData.bio,
+            phone: userData.phone,
+            socialLinks: userData.socialLinks,
+          }),
+        });
+      } catch (err) {
+        console.warn("Failed to register user on backend:", err);
+        // Continue anyway - user can still use the app
+      }
 
       await setUser(userData);
       

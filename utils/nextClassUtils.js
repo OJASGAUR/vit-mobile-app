@@ -28,10 +28,72 @@ export function findNextClass(timetable, currentTime = null) {
   };
 
   const weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  const weekdayOnly = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
   
   // FIRST: Check for ongoing class (priority) - check today's classes directly
   const todayName = dayMap[currentDay];
   const todayEvents = timetable[todayName] || [];
+  const isWeekend = currentDay === 0 || currentDay === 6; // Sunday or Saturday
+  
+  // If it's weekend, skip to next weekday
+  if (isWeekend) {
+    // Find next weekday class (skip weekend)
+    let nextClass = null;
+    let nextClassDay = null;
+    let minSecondsRemaining = Infinity;
+    
+    // Calculate days until next Monday
+    const daysUntilMonday = currentDay === 0 ? 1 : (8 - currentDay); // Sunday = 1 day, Saturday = 2 days
+    const mondayIndex = weekdays.indexOf("Monday");
+    
+    // Check from Monday onwards (skip weekend)
+    for (let dayOffset = daysUntilMonday; dayOffset < 7; dayOffset++) {
+      const checkDayIndex = (mondayIndex + (dayOffset - daysUntilMonday)) % 7;
+      const checkDayName = weekdays[checkDayIndex];
+      
+      // Skip weekends in the search
+      if (checkDayName === "Saturday" || checkDayName === "Sunday") {
+        continue;
+      }
+      
+      const dayEvents = timetable[checkDayName] || [];
+      const dayClasses = dayEvents.filter(event => event.start && event.end);
+      
+      for (const cls of dayClasses) {
+        const [startHour, startMin] = cls.start.split(':').map(Number);
+        const classStartSeconds = startHour * 3600 + startMin * 60;
+        // Add days in seconds
+        const classStartSecondsWithOffset = classStartSeconds + dayOffset * 24 * 3600;
+        
+        const secondsRemaining = classStartSecondsWithOffset - currentTimeSeconds;
+        if (secondsRemaining < minSecondsRemaining) {
+          minSecondsRemaining = secondsRemaining;
+          nextClass = cls;
+          nextClassDay = checkDayName;
+        }
+      }
+      
+      // If we found a class, break
+      if (nextClass) {
+        break;
+      }
+    }
+    
+    if (nextClass) {
+      return {
+        class: nextClass,
+        day: nextClassDay,
+        timeRemaining: formatTimeRemaining(minSecondsRemaining),
+        minutesRemaining: Math.floor(minSecondsRemaining / 60),
+        secondsRemaining: minSecondsRemaining,
+        isOngoing: false,
+        isToday: false,
+        isWeekend: true,
+      };
+    }
+    
+    return null; // No classes found
+  }
   
   if (todayEvents.length === 0 && Object.keys(timetable).length === 0) {
     return null;
@@ -84,14 +146,41 @@ export function findNextClass(timetable, currentTime = null) {
     }
   }
 
-  // If no class found today, check upcoming days
+  // Check if all classes for today are done
+  let allTodayClassesDone = false;
+  if (todayClasses.length > 0) {
+    // Find the last class of the day
+    const lastClass = todayClasses.reduce((latest, cls) => {
+      const [endHour, endMin] = cls.end.split(':').map(Number);
+      const [latestEndHour, latestEndMin] = latest.end.split(':').map(Number);
+      const clsEndMinutes = endHour * 60 + endMin;
+      const latestEndMinutes = latestEndHour * 60 + latestEndMin;
+      return clsEndMinutes > latestEndMinutes ? cls : latest;
+    });
+    
+    const [lastEndHour, lastEndMin] = lastClass.end.split(':').map(Number);
+    const lastClassEndMinutes = lastEndHour * 60 + lastEndMin;
+    
+    // If current time is after the last class of the day
+    if (currentTimeMinutes >= lastClassEndMinutes) {
+      allTodayClassesDone = true;
+    }
+  }
+
+  // If no class found today, check upcoming days (skip weekends)
   if (!nextClass) {
     const currentDayIndex = weekdays.indexOf(todayName);
     
-    // Check next 7 days
+    // Check next 7 days, but skip weekends
     for (let dayOffset = 1; dayOffset < 7; dayOffset++) {
       const checkDayIndex = (currentDayIndex + dayOffset) % 7;
       const checkDayName = weekdays[checkDayIndex];
+      
+      // Skip weekends
+      if (checkDayName === "Saturday" || checkDayName === "Sunday") {
+        continue;
+      }
+      
       const dayEvents = timetable[checkDayName] || [];
       const dayClasses = dayEvents.filter(event => event.start && event.end);
       
@@ -116,6 +205,20 @@ export function findNextClass(timetable, currentTime = null) {
     }
   }
 
+  // If all today's classes are done, return special flag
+  if (allTodayClassesDone) {
+    return {
+      class: null,
+      day: todayName,
+      timeRemaining: null,
+      minutesRemaining: null,
+      secondsRemaining: null,
+      isOngoing: false,
+      isToday: true,
+      allTodayClassesDone: true,
+    };
+  }
+
   if (!nextClass) {
     return null;
   }
@@ -128,6 +231,7 @@ export function findNextClass(timetable, currentTime = null) {
     secondsRemaining: minSecondsRemaining,
     isOngoing: false,
     isToday: nextClassDay === todayName,
+    allTodayClassesDone: false,
   };
 }
 

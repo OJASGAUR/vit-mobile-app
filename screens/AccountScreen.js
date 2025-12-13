@@ -18,6 +18,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useStore } from "../stores/useStore";
 import { useThemeColors } from "../theme/theme";
 import { generateAvatarColor, getInitials } from "../utils/avatarUtils";
+import { BACKEND_URL } from "../services/backend";
 
 export default function AccountScreen({ navigation }) {
   const user = useStore((s) => s.user);
@@ -52,7 +53,32 @@ export default function AccountScreen({ navigation }) {
       });
 
       if (!result.canceled && result.assets[0]) {
-        await updateUser({ avatar: result.assets[0].uri });
+        const avatarUri = result.assets[0].uri;
+        
+        // Sync to backend
+        if (user?.regNo) {
+          try {
+            await fetch(`${BACKEND_URL}/api/user/register`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                name: user.name,
+                regNo: user.regNo,
+                avatar: avatarUri,
+                bio: user.bio || "",
+                phone: user.phone || "",
+                socialLinks: user.socialLinks || {},
+              }),
+            });
+          } catch (err) {
+            console.warn("Failed to sync avatar to backend:", err);
+            // Continue anyway
+          }
+        }
+        
+        await updateUser({ avatar: avatarUri });
       }
     } catch (error) {
       console.error("Error picking image:", error);
@@ -68,7 +94,7 @@ export default function AccountScreen({ navigation }) {
 
     try {
       setSaving(true);
-      await updateUser({
+      const updatedData = {
         name: name.trim(),
         bio: bio.trim(),
         phone: phone.trim(),
@@ -77,7 +103,32 @@ export default function AccountScreen({ navigation }) {
           twitter: twitter.trim(),
           facebook: facebook.trim(),
         },
-      });
+      };
+      
+      // Sync to backend
+      if (user?.regNo) {
+        try {
+          await fetch(`${BACKEND_URL}/api/user/register`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              name: updatedData.name,
+              regNo: user.regNo,
+              avatar: user.avatar,
+              bio: updatedData.bio,
+              phone: updatedData.phone,
+              socialLinks: updatedData.socialLinks,
+            }),
+          });
+        } catch (err) {
+          console.warn("Failed to sync user to backend:", err);
+          // Continue anyway
+        }
+      }
+      
+      await updateUser(updatedData);
       Alert.alert("Success", "Profile updated successfully");
     } catch (error) {
       console.error("Error saving profile:", error);
