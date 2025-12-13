@@ -50,7 +50,7 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Vitwise — Mobile</Text>
+      <Text style={styles.title}>VITWISE</Text>
       <Text style={styles.subtitle}>Upload a timetable screenshot to extract courses</Text>
 
       <TouchableOpacity style={styles.pick} onPress={pickImage}>
