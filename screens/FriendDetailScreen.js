@@ -16,14 +16,21 @@ import { useStore } from "../stores/useStore";
 import { useThemeColors } from "../theme/theme";
 import FriendAvatar from "../components/FriendAvatar";
 import { removeFriend } from "../services/api";
+import TopAppBar from "../components/TopAppBar";
+import ProfilePanel from "../components/ProfilePanel";
 
 export default function FriendDetailScreen({ route, navigation }) {
   const { friend } = route.params;
   const [removing, setRemoving] = useState(false);
+  const [profilePanelVisible, setProfilePanelVisible] = useState(false);
 
   const user = useStore((s) => s.user);
   const syncFriendsFromBackend = useStore((s) => s.syncFriendsFromBackend);
   const colors = useThemeColors();
+
+  const handleAvatarPress = React.useCallback(() => {
+    setProfilePanelVisible(true);
+  }, []);
 
   const handleRemoveFriend = () => {
     if (!user || !friend) return;
@@ -61,10 +68,19 @@ export default function FriendDetailScreen({ route, navigation }) {
   };
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={["bottom"]}>
+      <TopAppBar
+        title="Friend Details"
+        onAvatarPress={handleAvatarPress}
+        showBackButton={navigation.canGoBack()}
+        onBackPress={() => navigation.goBack()}
+      />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        removeClippedSubviews={true}
+        scrollEventThrottle={16}
       >
         <View style={styles.container}>
           <View
@@ -127,6 +143,10 @@ export default function FriendDetailScreen({ route, navigation }) {
           </TouchableOpacity>
         </View>
       </ScrollView>
+      <ProfilePanel
+        visible={profilePanelVisible}
+        onClose={() => setProfilePanelVisible(false)}
+      />
     </SafeAreaView>
   );
 }

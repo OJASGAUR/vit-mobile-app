@@ -13,11 +13,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useStore } from "../stores/useStore";
 import { saveAppState } from "../services/localStorage";
 import { useThemeColors } from "../theme/theme";
+import TopAppBar from "../components/TopAppBar";
+import ProfilePanel from "../components/ProfilePanel";
 
 const VALID_CODE = "KL3ERT&*9";
 
 export default function SubscriptionScreen({ navigation }) {
   const [codeInput, setCodeInput] = useState("");
+  const [profilePanelVisible, setProfilePanelVisible] = useState(false);
 
   const setUploadsRemaining = useStore((s) => s.setUploadsRemaining);
   const setSubscriptionCode = useStore((s) => s.setSubscriptionCode);
@@ -25,6 +28,10 @@ export default function SubscriptionScreen({ navigation }) {
   const timetable = useStore((s) => s.timetable);
 
   const colors = useThemeColors();
+
+  const handleAvatarPress = React.useCallback(() => {
+    setProfilePanelVisible(true);
+  }, []);
 
   const handleApply = async () => {
     const code = codeInput.trim();
@@ -59,8 +66,14 @@ export default function SubscriptionScreen({ navigation }) {
   return (
     <SafeAreaView
       style={[styles.safe, { backgroundColor: colors.background }]}
-      edges={["left", "right"]}
+      edges={["bottom"]}
     >
+      <TopAppBar
+        title="Subscription"
+        onAvatarPress={handleAvatarPress}
+        showBackButton={navigation.canGoBack()}
+        onBackPress={() => navigation.goBack()}
+      />
       <View style={styles.container}>
         <Text style={[styles.title, { color: colors.textPrimary }]}>
           Subscription
@@ -97,6 +110,10 @@ export default function SubscriptionScreen({ navigation }) {
           Current uploads remaining: {uploadsRemaining}
         </Text>
       </View>
+      <ProfilePanel
+        visible={profilePanelVisible}
+        onClose={() => setProfilePanelVisible(false)}
+      />
     </SafeAreaView>
   );
 }

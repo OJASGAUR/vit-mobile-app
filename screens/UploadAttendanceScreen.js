@@ -462,6 +462,8 @@ export default function UploadAttendanceScreen({ navigation }) {
       <TopAppBar
         title="Upload Attendance"
         onAvatarPress={handleAvatarPress}
+        showBackButton={navigation.canGoBack()}
+        onBackPress={() => navigation.goBack()}
       />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -489,7 +491,7 @@ export default function UploadAttendanceScreen({ navigation }) {
                   <Text style={styles.numberText}>1</Text>
                 </View>
                 <Text style={[styles.instructionText, { color: colors.textPrimary }]}>
-                  Open VTOP → Academics → Attendance
+                  Open VTOP in desktop mode
                 </Text>
               </View>
               <View style={styles.instructionRow}>
@@ -497,12 +499,20 @@ export default function UploadAttendanceScreen({ navigation }) {
                   <Text style={styles.numberText}>2</Text>
                 </View>
                 <Text style={[styles.instructionText, { color: colors.textPrimary }]}>
-                  Copy the full attendance table
+                  Go to Academics then Class Attendance
                 </Text>
               </View>
               <View style={styles.instructionRow}>
                 <View style={[styles.numberBadge, { backgroundColor: colors.accent }]}>
                   <Text style={styles.numberText}>3</Text>
+                </View>
+                <Text style={[styles.instructionText, { color: colors.textPrimary }]}>
+                  Copy the entire table from Sl.No. to last
+                </Text>
+              </View>
+              <View style={styles.instructionRow}>
+                <View style={[styles.numberBadge, { backgroundColor: colors.accent }]}>
+                  <Text style={styles.numberText}>4</Text>
                 </View>
                 <Text style={[styles.instructionText, { color: colors.textPrimary }]}>
                   Paste it below

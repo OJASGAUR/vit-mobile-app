@@ -18,7 +18,9 @@ import * as ImagePicker from "expo-image-picker";
 import { useStore } from "../stores/useStore";
 import { useThemeColors } from "../theme/theme";
 import { generateAvatarColor, getInitials } from "../utils/avatarUtils";
-import { BACKEND_URL } from "../services/backend";
+import { updateUserProfile } from "../services/api";
+import TopAppBar from "../components/TopAppBar";
+import ProfilePanel from "../components/ProfilePanel";
 
 export default function AccountScreen({ navigation }) {
   const user = useStore((s) => s.user);
@@ -33,6 +35,7 @@ export default function AccountScreen({ navigation }) {
   const [twitter, setTwitter] = useState(user?.socialLinks?.twitter || "");
   const [facebook, setFacebook] = useState(user?.socialLinks?.facebook || "");
   const [saving, setSaving] = useState(false);
+  const [profilePanelVisible, setProfilePanelVisible] = useState(false);
 
   const avatarColor = user?.avatarColor || generateAvatarColor(user?.name || "");
   const initials = user?.initials || getInitials(user?.name || "");
@@ -58,23 +61,17 @@ export default function AccountScreen({ navigation }) {
         // Sync to backend
         if (user?.regNo) {
           try {
-            await fetch(`${BACKEND_URL}/api/user/register`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                name: user.name,
-                regNo: user.regNo,
-                avatar: avatarUri,
-                bio: user.bio || "",
-                phone: user.phone || "",
-                socialLinks: user.socialLinks || {},
-              }),
+            await updateUserProfile(user.regNo, {
+              name: user.name,
+              regNo: user.regNo,
+              avatar: avatarUri,
+              bio: user.bio || "",
+              phone: user.phone || "",
+              socialLinks: user.socialLinks || {},
             });
           } catch (err) {
             console.warn("Failed to sync avatar to backend:", err);
-            // Continue anyway
+            Alert.alert("Warning", "Profile saved locally but failed to sync with server. Please check your connection.");
           }
         }
         
@@ -106,30 +103,30 @@ export default function AccountScreen({ navigation }) {
       };
       
       // Sync to backend
+      let backendSyncSuccess = true;
       if (user?.regNo) {
         try {
-          await fetch(`${BACKEND_URL}/api/user/register`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              name: updatedData.name,
-              regNo: user.regNo,
-              avatar: user.avatar,
-              bio: updatedData.bio,
-              phone: updatedData.phone,
-              socialLinks: updatedData.socialLinks,
-            }),
+          await updateUserProfile(user.regNo, {
+            name: updatedData.name,
+            regNo: user.regNo,
+            avatar: user.avatar,
+            bio: updatedData.bio,
+            phone: updatedData.phone,
+            socialLinks: updatedData.socialLinks,
           });
         } catch (err) {
           console.warn("Failed to sync user to backend:", err);
-          // Continue anyway
+          backendSyncSuccess = false;
         }
       }
       
       await updateUser(updatedData);
-      Alert.alert("Success", "Profile updated successfully");
+      
+      if (backendSyncSuccess) {
+        Alert.alert("Success", "Profile updated successfully");
+      } else {
+        Alert.alert("Partial Success", "Profile saved locally but failed to sync with server. Please check your connection.");
+      }
     } catch (error) {
       console.error("Error saving profile:", error);
       Alert.alert("Error", "Failed to save profile");
@@ -159,15 +156,27 @@ export default function AccountScreen({ navigation }) {
     );
   };
 
+  const handleAvatarPress = React.useCallback(() => {
+    setProfilePanelVisible(true);
+  }, []);
+
   return (
     <SafeAreaView
       style={[styles.safe, { backgroundColor: colors.background }]}
-      edges={["left", "right"]}
+      edges={["bottom"]}
     >
+      <TopAppBar
+        title="Account"
+        onAvatarPress={handleAvatarPress}
+        showBackButton={navigation.canGoBack()}
+        onBackPress={() => navigation.goBack()}
+      />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        removeClippedSubviews={true}
+        scrollEventThrottle={16}
       >
         <View style={styles.container}>
           {/* Avatar Section */}
@@ -373,6 +382,10 @@ export default function AccountScreen({ navigation }) {
           </View>
         </View>
       </ScrollView>
+      <ProfilePanel
+        visible={profilePanelVisible}
+        onClose={() => setProfilePanelVisible(false)}
+      />
     </SafeAreaView>
   );
 }

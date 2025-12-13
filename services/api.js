@@ -51,6 +51,32 @@ export async function getUserByRegNo(regNo) {
 }
 
 /**
+ * Update user profile
+ */
+export async function updateUserProfile(regNo, userData) {
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/user/${regNo}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(userData),
+    });
+
+    const json = await res.json();
+
+    if (!res.ok) {
+      throw new Error(json.error || "Failed to update profile");
+    }
+
+    return json;
+  } catch (err) {
+    console.error("updateUserProfile error:", err);
+    throw err;
+  }
+}
+
+/**
  * Send friend request
  */
 export async function sendFriendRequest(fromRegNo, toRegNo) {

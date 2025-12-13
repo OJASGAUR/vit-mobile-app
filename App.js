@@ -5,6 +5,7 @@ import {
   NavigationContainer,
   DefaultTheme,
   DarkTheme,
+  useFocusEffect,
 } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createStackNavigator } from "@react-navigation/stack";
@@ -20,7 +21,8 @@ import UnifiedFriendsScreen from "./screens/UnifiedFriendsScreen";
 import FriendDetailScreen from "./screens/FriendDetailScreen";
 import AttendanceScreen from "./screens/AttendanceScreen";
 import UploadAttendanceScreen from "./screens/UploadAttendanceScreen";
-import UnmarkedAttendanceModal from "./components/UnmarkedAttendanceModal";
+import AttendanceCalculatorScreen from "./screens/AttendanceCalculatorScreen";
+import SubjectsScreen from "./screens/SubjectsScreen";
 
 import { useStore } from "./stores/useStore";
 import { loadAppState } from "./services/localStorage";
@@ -28,23 +30,33 @@ import { useThemeColors } from "./theme/theme";
 import { Ionicons } from "@expo/vector-icons";
 import SplashScreen from "./components/SplashScreen";
 import ProfilePanel from "./components/ProfilePanel";
+import TopAppBar from "./components/TopAppBar";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
-// More screen - opens profile panel
+// More screen - opens profile panel directly
 function MoreScreen({ navigation }) {
-  const [profilePanelVisible, setProfilePanelVisible] = React.useState(true);
+  const [profilePanelVisible, setProfilePanelVisible] = React.useState(false);
   const colors = useThemeColors();
   
-  React.useEffect(() => {
-    // When More tab is pressed, open profile panel
-    setProfilePanelVisible(true);
-  }, []);
+  // Use useFocusEffect to open panel every time the tab is focused
+  useFocusEffect(
+    React.useCallback(() => {
+      // Open panel immediately when tab is focused
+      setProfilePanelVisible(true);
+      return () => {
+        // Close panel when screen loses focus
+        setProfilePanelVisible(false);
+      };
+    }, [])
+  );
 
   return (
     <>
-      <View style={{ flex: 1, backgroundColor: colors.background }} />
+      {/* Empty transparent screen - panel will overlay */}
+      <View style={{ flex: 1, backgroundColor: 'transparent' }} />
       <ProfilePanel
         visible={profilePanelVisible}
         onClose={() => {
@@ -120,6 +132,15 @@ function MainTabs() {
         }}
       />
       <Tab.Screen
+        name="Attendance"
+        component={AttendanceScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="checkmark-circle" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
         name="More"
         component={MoreScreen}
         options={{
@@ -151,22 +172,22 @@ function MainStack() {
       <Stack.Screen
         name="Account"
         component={AccountScreen}
-        options={{ title: "Account" }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="Subscription"
         component={SubscriptionScreen}
-        options={{ title: "Subscription" }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="Upload"
         component={UploadScreen}
-        options={{ title: "Upload Timetable" }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="FriendDetail"
         component={FriendDetailScreen}
-        options={{ title: "Friend Details" }}
+        options={{ headerShown: false }}
       />
         <Stack.Screen
           name="Attendance"
@@ -176,7 +197,17 @@ function MainStack() {
       <Stack.Screen
         name="UploadAttendance"
         component={UploadAttendanceScreen}
-        options={{ title: "Upload Attendance" }}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="AttendanceCalculator"
+        component={AttendanceCalculatorScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Subjects"
+        component={SubjectsScreen}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );
@@ -196,12 +227,12 @@ function UploadStack() {
       <Stack.Screen
         name="Upload"
         component={UploadScreen}
-        options={{ title: "Upload timetable" }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="Subscription"
         component={SubscriptionScreen}
-        options={{ title: "Subscription" }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="MainStack"
@@ -238,25 +269,13 @@ function OnboardingStack() {
 }
 
 function AppContent() {
-  const [showUnmarkedModal, setShowUnmarkedModal] = useState(false);
   const timetable = useStore((s) => s.timetable);
   const user = useStore((s) => s.user);
   const darkMode = useStore((s) => s.darkMode);
   const colors = useThemeColors();
-  const hydrated = useStore((s) => s.hydrated);
 
   const hasTimetable = !!timetable;
   const hasUser = !!user;
-
-  // Check for unmarked attendance on app start
-  useEffect(() => {
-    if (hydrated && hasUser && hasTimetable) {
-      // Check for unmarked attendance after a short delay
-      setTimeout(() => {
-        setShowUnmarkedModal(true);
-      }, 1500);
-    }
-  }, [hydrated, hasUser, hasTimetable]);
 
   const navTheme = darkMode
     ? {
@@ -293,10 +312,6 @@ function AppContent() {
           <UploadStack />
         )}
       </NavigationContainer>
-      <UnmarkedAttendanceModal
-        visible={showUnmarkedModal}
-        onClose={() => setShowUnmarkedModal(false)}
-      />
     </>
   );
 }

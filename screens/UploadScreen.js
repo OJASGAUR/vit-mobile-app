@@ -19,12 +19,15 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { uploadTextAsync } from "../services/api";
 import { useStore } from "../stores/useStore";
 import { useThemeColors } from "../theme/theme";
+import TopAppBar from "../components/TopAppBar";
+import ProfilePanel from "../components/ProfilePanel";
 
 const { width, height } = Dimensions.get('window');
 
 export default function UploadScreen({ navigation }) {
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
+  const [profilePanelVisible, setProfilePanelVisible] = useState(false);
   const textInputRef = useRef(null);
   
   const setTimetable = useStore((s) => s.setTimetable);
@@ -33,6 +36,10 @@ export default function UploadScreen({ navigation }) {
   const darkMode = useStore((s) => s.darkMode);
   
   const colors = useThemeColors();
+
+  const handleAvatarPress = React.useCallback(() => {
+    setProfilePanelVisible(true);
+  }, []);
 
   const handleSubmit = async () => {
     if (!text.trim()) {
@@ -73,7 +80,13 @@ export default function UploadScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={["bottom"]}>
+      <TopAppBar
+        title="Upload Timetable"
+        onAvatarPress={handleAvatarPress}
+        showBackButton={navigation.canGoBack()}
+        onBackPress={() => navigation.goBack()}
+      />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardAvoidingView}
@@ -81,9 +94,7 @@ export default function UploadScreen({ navigation }) {
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.container}>
-            {/* REMOVED the duplicate header completely */}
-
-            {/* Main Content Area - Starts from top */}
+            {/* Main Content Area */}
             <View style={styles.mainContent}>
               
               {/* Instructions Card - Now at the very top */}
@@ -145,6 +156,8 @@ export default function UploadScreen({ navigation }) {
                   style={styles.textScrollView}
                   showsVerticalScrollIndicator={true}
                   keyboardShouldPersistTaps="handled"
+                  removeClippedSubviews={true}
+                  scrollEventThrottle={16}
                   onContentSizeChange={() => {
                     if (textInputRef.current) {
                       textInputRef.current.scrollToEnd({ animated: true });
@@ -215,6 +228,10 @@ export default function UploadScreen({ navigation }) {
           </View>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
+      <ProfilePanel
+        visible={profilePanelVisible}
+        onClose={() => setProfilePanelVisible(false)}
+      />
     </SafeAreaView>
   );
 }

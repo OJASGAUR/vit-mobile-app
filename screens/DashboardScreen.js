@@ -253,13 +253,13 @@ export default function DashboardScreen({ navigation }) {
                 color={colors.accent}
               />
               <Text style={[styles.summaryCardTitle, { color: colors.textPrimary }]}>
-                Attendance
+                Attendance Tracker
               </Text>
               <Text style={[styles.summaryCardValue, { color: colors.textSecondary }]}>
                 View details
               </Text>
             </TouchableOpacity>
-            <View
+            <TouchableOpacity
               style={[
                 styles.summaryCard,
                 {
@@ -267,6 +267,8 @@ export default function DashboardScreen({ navigation }) {
                   borderColor: colors.border,
                 },
               ]}
+              onPress={() => navigation.navigate("Subjects")}
+              activeOpacity={0.7}
             >
               <Ionicons
                 name="book-outline"
@@ -277,9 +279,9 @@ export default function DashboardScreen({ navigation }) {
                 Subjects
               </Text>
               <Text style={[styles.summaryCardValue, { color: colors.textSecondary }]}>
-                Coming soon
+                View all
               </Text>
-            </View>
+            </TouchableOpacity>
             <View
               style={[
                 styles.summaryCard,

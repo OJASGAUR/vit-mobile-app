@@ -80,6 +80,17 @@ export default function AttendanceScreen({ navigation }) {
         showBackButton={navigation.canGoBack()}
         onBackPress={() => navigation.goBack()}
       />
+      {/* Upload Attendance Button */}
+      <View style={[styles.uploadButtonContainer, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+        <TouchableOpacity
+          style={[styles.uploadButton, { backgroundColor: colors.accent }]}
+          onPress={() => navigation.navigate("UploadAttendance")}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="cloud-upload-outline" size={18} color="#FFF" />
+          <Text style={styles.uploadButtonText}>Upload Attendance</Text>
+        </TouchableOpacity>
+      </View>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -108,8 +119,6 @@ export default function AttendanceScreen({ navigation }) {
           subjects.map((subject) => {
             // Get combined attendance (baseline + daily) - now includes type
             const combined = getCombinedAttendance(subject.courseCode, subject.type);
-            const finalAttended = combined.finalAttended;
-            const finalMissed = combined.finalMissed;
             const finalPercentage = combined.finalPercentage;
             
             // Use 75 as default required percent for color calculation
@@ -118,7 +127,7 @@ export default function AttendanceScreen({ navigation }) {
               : colors.textSecondary;
 
             return (
-              <View
+              <TouchableOpacity
                 key={`${subject.courseCode}-${subject.type}`}
                 style={[
                   styles.subjectCard,
@@ -127,6 +136,14 @@ export default function AttendanceScreen({ navigation }) {
                     borderColor: colors.border,
                   },
                 ]}
+                onPress={() => {
+                  navigation.navigate("AttendanceCalculator", {
+                    courseCode: subject.courseCode,
+                    courseName: subject.courseName,
+                    courseType: subject.type,
+                  });
+                }}
+                activeOpacity={0.7}
               >
                 <View style={styles.subjectHeader}>
                   <View style={styles.subjectInfo}>
@@ -153,36 +170,7 @@ export default function AttendanceScreen({ navigation }) {
                     </Text>
                   </View>
                 </View>
-
-                <View style={styles.statsRow}>
-                  <View style={styles.statItem}>
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={20}
-                      color="#10B981"
-                    />
-                    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                      Attended
-                    </Text>
-                    <Text style={[styles.statValue, { color: colors.textPrimary }]}>
-                      {finalAttended}
-                    </Text>
-                  </View>
-                  <View style={styles.statItem}>
-                    <Ionicons
-                      name="close-circle"
-                      size={20}
-                      color="#EF4444"
-                    />
-                    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                      Missed
-                    </Text>
-                    <Text style={[styles.statValue, { color: colors.textPrimary }]}>
-                      {finalMissed}
-                    </Text>
-                  </View>
-                </View>
-              </View>
+              </TouchableOpacity>
             );
           })
         )}
@@ -224,10 +212,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   subjectCard: {
-    padding: 20,
-    borderRadius: 16,
+    padding: 14,
+    borderRadius: 12,
     borderWidth: 1,
-    marginBottom: 16,
+    marginBottom: 10,
   },
   subjectHeader: {
     flexDirection: "row",
@@ -240,40 +228,40 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   subjectName: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: "700",
-    marginBottom: 4,
+    marginBottom: 3,
   },
   subjectCode: {
-    fontSize: 14,
+    fontSize: 12,
   },
   percentageBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
   },
   percentageText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "700",
   },
-  statsRow: {
+  uploadButtonContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  uploadButton: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "center",
-    alignItems: "center",
-    marginTop: 12,
-    gap: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    gap: 8,
   },
-  statItem: {
-    alignItems: "center",
-    gap: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    fontWeight: "500",
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: "700",
+  uploadButtonText: {
+    color: "#FFF",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
 
