@@ -1,7 +1,6 @@
-// vit-mobile-app/services/storage.js
 import * as SecureStore from "expo-secure-store";
 
-const TIMETABLES_KEY = "vit_timetables"; // NO ":" allowed
+const TIMETABLES_KEY = "vit_timetables";
 
 export async function saveLocalTimetables(list) {
   await SecureStore.setItemAsync(TIMETABLES_KEY, JSON.stringify(list));

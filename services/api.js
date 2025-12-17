@@ -1,12 +1,5 @@
-// services/api.js
-
 import { BACKEND_URL } from "./backend";
 
-/**
- * Upload pasted text to backend
- * backend returns:
- *  { timetable, courses, warnings }
- */
 export async function uploadTextAsync(text) {
   try {
     const res = await fetch(`${BACKEND_URL}/api/upload-text`, {
@@ -31,9 +24,6 @@ export async function uploadTextAsync(text) {
   }
 }
 
-/**
- * Get user by registration number
- */
 export async function getUserByRegNo(regNo) {
   try {
     const res = await fetch(`${BACKEND_URL}/api/user/${regNo}`);
@@ -50,9 +40,6 @@ export async function getUserByRegNo(regNo) {
   }
 }
 
-/**
- * Update user profile
- */
 export async function updateUserProfile(regNo, userData) {
   try {
     const res = await fetch(`${BACKEND_URL}/api/user/${regNo}`, {
@@ -76,9 +63,6 @@ export async function updateUserProfile(regNo, userData) {
   }
 }
 
-/**
- * Send friend request
- */
 export async function sendFriendRequest(fromRegNo, toRegNo) {
   try {
     const res = await fetch(`${BACKEND_URL}/api/friends/request`, {
@@ -102,9 +86,6 @@ export async function sendFriendRequest(fromRegNo, toRegNo) {
   }
 }
 
-/**
- * Accept friend request
- */
 export async function acceptFriendRequest(fromRegNo, toRegNo) {
   try {
     const res = await fetch(`${BACKEND_URL}/api/friends/accept`, {
@@ -128,9 +109,6 @@ export async function acceptFriendRequest(fromRegNo, toRegNo) {
   }
 }
 
-/**
- * Reject friend request
- */
 export async function rejectFriendRequest(fromRegNo, toRegNo) {
   try {
     const res = await fetch(`${BACKEND_URL}/api/friends/reject`, {
@@ -154,9 +132,6 @@ export async function rejectFriendRequest(fromRegNo, toRegNo) {
   }
 }
 
-/**
- * Remove friend
- */
 export async function removeFriend(fromRegNo, toRegNo) {
   try {
     const res = await fetch(`${BACKEND_URL}/api/friends/remove`, {
@@ -180,14 +155,10 @@ export async function removeFriend(fromRegNo, toRegNo) {
   }
 }
 
-/**
- * Get friends and pending requests for a user
- */
 export async function getFriends(regNo) {
   try {
     const res = await fetch(`${BACKEND_URL}/api/friends/${regNo}`);
     
-    // Check content type before parsing
     const contentType = res.headers.get("content-type");
     if (!contentType || !contentType.includes("application/json")) {
       const text = await res.text();
@@ -198,7 +169,6 @@ export async function getFriends(regNo) {
     const json = await res.json();
 
     if (!res.ok) {
-      // Handle "User not found" specifically
       if (json.error && json.error.includes("not found")) {
         throw new Error("User not found");
       }
@@ -207,11 +177,9 @@ export async function getFriends(regNo) {
 
     return json;
   } catch (err) {
-    // If it's already our custom error, re-throw it
     if (err.message && (err.message.includes("Backend endpoint") || err.message.includes("User not found"))) {
       throw err;
     }
-    // Handle JSON parse errors
     if (err instanceof SyntaxError) {
       console.error("getFriends: JSON parse error - backend may not be deployed");
       throw new Error("Backend endpoint not available. Please ensure backend is deployed with friends endpoints.");

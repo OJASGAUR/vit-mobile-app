@@ -1,9 +1,6 @@
-// services/notifications.js
-
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
-// Configure notification behavior
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -29,9 +26,8 @@ export async function requestPermissions() {
 export async function scheduleAttendanceReminder(lastClassEndTime) {
   await Notifications.cancelAllScheduledNotificationsAsync();
   
-  const triggerTime = new Date(lastClassEndTime.getTime() + 5 * 60 * 1000); // 5 minutes after last class
+  const triggerTime = new Date(lastClassEndTime.getTime() + 5 * 60 * 1000);
   
-  // Only schedule if trigger time is in the future
   if (triggerTime > new Date()) {
     await Notifications.scheduleNotificationAsync({
       content: {

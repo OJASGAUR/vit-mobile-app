@@ -1,4 +1,3 @@
-// App.js
 import React, { useEffect, useState } from "react";
 import { View, ActivityIndicator, StyleSheet, StatusBar, Platform } from "react-native";
 import {
@@ -36,18 +35,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
-// More screen - opens profile panel directly
 function MoreScreen({ navigation }) {
   const [profilePanelVisible, setProfilePanelVisible] = React.useState(false);
   const colors = useThemeColors();
   
-  // Use useFocusEffect to open panel every time the tab is focused
   useFocusEffect(
     React.useCallback(() => {
-      // Open panel immediately when tab is focused
       setProfilePanelVisible(true);
       return () => {
-        // Close panel when screen loses focus
         setProfilePanelVisible(false);
       };
     }, [])
@@ -55,13 +50,11 @@ function MoreScreen({ navigation }) {
 
   return (
     <>
-      {/* Empty transparent screen - panel will overlay */}
       <View style={{ flex: 1, backgroundColor: 'transparent' }} />
       <ProfilePanel
         visible={profilePanelVisible}
         onClose={() => {
           setProfilePanelVisible(false);
-          // Navigate back to Dashboard when panel closes
           navigation.navigate("Dashboard");
         }}
       />
@@ -274,8 +267,6 @@ function AppContent() {
   const darkMode = useStore((s) => s.darkMode);
   const colors = useThemeColors();
 
-  // Check if timetable exists and has actual classes
-  // More robust check that handles different timetable structures
   const hasTimetable = timetable && typeof timetable === 'object' && 
     Object.keys(timetable).length > 0 &&
     Object.values(timetable).some(day => {
@@ -286,7 +277,6 @@ function AppContent() {
     });
   const hasUser = !!user;
 
-  // Debug logging (only in development)
   useEffect(() => {
     if (__DEV__) {
       console.log("[AppContent] Timetable state:", timetable ? "exists" : "null");
@@ -313,10 +303,9 @@ function AppContent() {
           background: colors.background,
           card: colors.card,
           text: colors.textPrimary,
-        },
-      };
+      },
+    };
 
-  // Use a key to force NavigationContainer to remount when stack changes
   const navigationKey = !hasUser ? 'onboarding' : hasTimetable ? 'main' : 'upload';
 
   return (
@@ -352,14 +341,12 @@ export default function App() {
 
   const [showSplash, setShowSplash] = useState(true);
 
-  // Hydrate from AsyncStorage
   useEffect(() => {
     const hydrate = async () => {
       try {
         const saved = await loadAppState();
         if (saved) {
           if (saved.timetable) {
-            // Normalize timetable to ensure Saturday and Sunday are present
             const normalized = normalizeTimetable(saved.timetable);
             setTimetable(normalized);
           }
@@ -383,19 +370,14 @@ export default function App() {
           }
           if (saved.attendance) {
             const { setAttendance } = useStore.getState();
-            // Migrate old attendance format to new format if needed
             const migratedAttendance = {};
             Object.keys(saved.attendance).forEach(key => {
               const oldData = saved.attendance[key];
               
-              // Check if key is old format (just courseCode) or new format (courseCode-type)
               const isOldFormat = !key.includes('-ETH') && !key.includes('-ELA') && !key.includes('-TH');
               
               if (isOldFormat) {
-                // Old format: migrate to both ETH and ELA (assuming it could be either)
-                // Check if old format (has 'attended' and 'missed' directly)
                 if (oldData.attended !== undefined && oldData.baselineAttended === undefined) {
-                  // Migrate to both ETH and ELA with same values (user can adjust later)
                   migratedAttendance[`${key}-ETH`] = {
                     baselineAttended: 0,
                     baselineMissed: 0,
@@ -411,7 +393,6 @@ export default function App() {
                     requiredPercent: oldData.requiredPercent || 75,
                   };
                 } else {
-                  // Already in new format structure but old key format
                   migratedAttendance[`${key}-ETH`] = {
                     baselineAttended: oldData.baselineAttended || 0,
                     baselineMissed: oldData.baselineMissed || 0,
@@ -428,9 +409,7 @@ export default function App() {
                   };
                 }
               } else {
-                // Already in new format (has type in key)
                 if (oldData.attended !== undefined && oldData.baselineAttended === undefined) {
-                  // Migrate: old 'attended'/'missed' become 'dailyAttended'/'dailyMissed'
                   migratedAttendance[key] = {
                     baselineAttended: 0,
                     baselineMissed: 0,
@@ -439,7 +418,6 @@ export default function App() {
                     requiredPercent: oldData.requiredPercent || 75,
                   };
                 } else {
-                  // Already in new format or missing fields
                   migratedAttendance[key] = {
                     baselineAttended: oldData.baselineAttended || 0,
                     baselineMissed: oldData.baselineMissed || 0,
@@ -470,7 +448,6 @@ export default function App() {
     hydrate();
   }, []);
 
-  // Show splash screen for 2.5 seconds
   if (showSplash) {
     return <SplashScreen onAnimationComplete={() => setShowSplash(false)} />;
   }

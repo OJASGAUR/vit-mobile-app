@@ -27,7 +27,6 @@ export async function loadAppState() {
     const json = await AsyncStorage.getItem("vitwise-storage");
     const saved = json ? JSON.parse(json) : null;
     if (saved) {
-      // Ensure attendance is initialized if not present in old data
       saved.attendance = saved.attendance || {};
       saved.attendanceMarks = saved.attendanceMarks || {};
       saved.attendanceUploadDate = saved.attendanceUploadDate || null;
